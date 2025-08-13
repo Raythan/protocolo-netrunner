@@ -64,7 +64,6 @@
         }
         .toast { animation: toastInRight 0.5s ease-out forwards; }
         
-        /* Novas Animações de UX */
         @keyframes target-hit {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); filter: drop-shadow(0 0 25px currentColor); }
@@ -81,7 +80,6 @@
         .progress-flash-animation {
           animation: progress-flash 0.4s ease-out;
         }
-        /* Fim das Novas Animações */
 
         .skill-node { position: relative; }
         .skill-node.locked { filter: grayscale(80%) brightness(50%); }
@@ -95,6 +93,18 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
+        }
+
+        /* Novas Classes de UX */
+        .equipped-highlight {
+            box-shadow: 0 0 10px var(--highlight-color);
+            border-color: var(--highlight-color) !important;
+        }
+        .item-tooltip {
+            position: fixed;
+            z-index: 100;
+            pointer-events: none;
+            transition: opacity 0.2s;
         }
     </style>
 </head>
@@ -250,7 +260,12 @@
                             </div>
                             <div class="space-y-2 mt-2">
                                 <div v-if="!items.length" class="text-center text-gray-500 p-4 bg-gray-800 rounded-lg">Inventário Vazio</div>
-                                <div v-for="item in items" :key="item.uniqueId" class="flex items-center justify-between bg-gray-800 p-3 rounded-lg border-l-4" :style="{borderLeftColor: item.rarityColor}">
+                                <div v-for="item in items" :key="item.uniqueId" 
+                                     @mouseenter="showComparisonTooltip(type, item, $event)"
+                                     @mouseleave="hideComparisonTooltip"
+                                     class="flex items-center justify-between bg-gray-800 p-3 rounded-lg border-l-4 transition-all" 
+                                     :class="{ 'equipped-highlight': gameState.equipment[type] === item.uniqueId }"
+                                     :style="{borderLeftColor: item.rarityColor}">
                                     <div>
                                         <p class="font-bold" :style="{color: item.rarityColor}"><i :class="['fa-solid', item.icon, 'mr-2']"></i>{{ item.name }}</p>
                                         <p class="text-sm text-gray-400">+{{ formatNumber(item.bonus.value) }} {{ {processamento: 'Processamento', ofuscacao: 'Ofuscação', agilidade: 'Agilidade'}[item.bonus.stat] || item.bonus.stat }}</p>
@@ -382,6 +397,28 @@
         </div>
         <div v-if="toast.show" class="toast fixed bottom-5 right-5 bg-cyan-500 text-black font-pixel text-sm p-4 rounded-lg shadow-lg z-50" :style="{backgroundColor: toast.color || 'var(--highlight-color)'}">
             <i :class="['fa-solid', toast.icon, 'mr-2']"></i>{{ toast.message }}
+        </div>
+
+        <!-- Tooltip de Comparação de Hardware -->
+        <div v-if="tooltip.visible" class="item-tooltip bg-gray-900 border-2 border-cyan-400 rounded-lg p-4 w-80 text-sm" :style="tooltip.style">
+            <div v-if="tooltip.data" class="grid grid-cols-2 gap-4">
+                <!-- Item Hovered -->
+                <div>
+                    <h4 class="font-bold" :style="{color: tooltip.data.hovered.rarityColor}">{{ tooltip.data.hovered.name }}</h4>
+                    <p class="text-gray-400">+{{ formatNumber(tooltip.data.hovered.bonus.value) }} {{ {processamento: 'Proc', ofuscacao: 'Ofus', agilidade: 'Agil'}[tooltip.data.hovered.bonus.stat] || tooltip.data.hovered.bonus.stat }}</p>
+                    <p v-if="tooltip.data.hovered.specialEffect" class="text-xs text-cyan-400 mt-1">{{ tooltip.data.hovered.specialEffect.description }}</p>
+                </div>
+                <!-- Item Equipado -->
+                <div>
+                    <h4 class="font-bold text-gray-400">{{ tooltip.data.equipped ? tooltip.data.equipped.name : 'Vazio' }}</h4>
+                    <template v-if="tooltip.data.equipped">
+                        <p :class="getComparisonColor(tooltip.data.hovered.bonus.value, tooltip.data.equipped.bonus.value)">
+                            +{{ formatNumber(tooltip.data.equipped.bonus.value) }} {{ {processamento: 'Proc', ofuscacao: 'Ofus', agilidade: 'Agil'}[tooltip.data.equipped.bonus.stat] || tooltip.data.equipped.bonus.stat }}
+                        </p>
+                        <p v-if="tooltip.data.equipped.specialEffect" class="text-xs text-gray-500 mt-1">{{ tooltip.data.equipped.specialEffect.description }}</p>
+                    </template>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -560,6 +597,7 @@
                 const isPlayerDisconnected = ref(false);
                 const playerDisconnectedTimer = ref(0);
                 const inventorySort = reactive({ deck: 'rarity', software: 'rarity', implante: 'rarity' });
+                const tooltip = reactive({ visible: false, data: null, style: {} });
                 
                 // --- COMPUTED PROPERTIES ---
                 const viewData = {
@@ -798,16 +836,14 @@
                     if (isPlayerDisconnected.value) return;
                     sounds.click.play();
 
-                    // Adiciona a classe de animação no elemento do ícone
                     const targetIcon = actionPanelRef.value.querySelector('.fa-solid');
                     if (targetIcon) {
                         targetIcon.classList.add('target-hit-animation');
-                        // Remove a classe após a animação para que possa ser reativada
                         setTimeout(() => targetIcon.classList.remove('target-hit-animation'), 200);
                     }
 
                     const now = Date.now();
-                    if (now - gameState.lastClickTimestamp < 2000) { // 2 second combo window
+                    if (now - gameState.lastClickTimestamp < 2000) {
                         gameState.comboCount = Math.min(10, gameState.comboCount + 1);
                     } else {
                         gameState.comboCount = 1;
@@ -833,7 +869,6 @@
                     const rect = actionPanelRef.value.getBoundingClientRect();
                     const position = { x: rect.width / 2, y: rect.height / 2 };
 
-                    // Adiciona a animação na barra de progresso
                     const progressBar = actionPanelRef.value.querySelector('.bg-cyan-400');
                     if (progressBar) {
                         progressBar.classList.add('progress-flash-animation');
@@ -1000,8 +1035,8 @@
                     
                     if (!baseItem || !rarityInfo) return;
 
-                    const baseValue = baseItem.bonus.value * 5; // Heurística de valor
-                    const sellPrice = Math.floor(baseValue * rarityInfo.multiplier * 0.25); // Vende por 25% do valor
+                    const baseValue = baseItem.bonus.value * 5;
+                    const sellPrice = Math.floor(baseValue * rarityInfo.multiplier * 0.25);
 
                     addCreds(sellPrice);
                     gameState.inventory[type].splice(itemIndex, 1);
@@ -1263,7 +1298,7 @@
                     Object.assign(gameState, newState);
                     gameState.traceLevel = 0;
                     saveGame();
-                    checkAchievements(); // Check for prestige achievement
+                    checkAchievements();
                 };
 
                 const selectSystem = (systemId) => {
@@ -1274,12 +1309,36 @@
 
                 const triggerRandomEvent = () => {
                     if (activeEvent.value) return;
-                    if(Math.random() < 0.25) { // 25% chance to trigger
+                    if(Math.random() < 0.25) {
                         const randomIndex = Math.floor(Math.random() * eventData.length);
                         const newEvent = eventData[randomIndex];
                         gameState.activeEventId = newEvent.id;
                         gameState.eventEndTime = dayjs().add(newEvent.duration, 'second').valueOf();
                     }
+                };
+
+                // --- Métodos de UX Adicionais ---
+                const showComparisonTooltip = (type, item, event) => {
+                    const equippedItem = getItem(type, gameState.equipment[type]);
+                    tooltip.data = {
+                        hovered: item,
+                        equipped: equippedItem
+                    };
+                    tooltip.style = {
+                        left: `${event.clientX + 15}px`,
+                        top: `${event.clientY + 15}px`
+                    };
+                    tooltip.visible = true;
+                };
+
+                const hideComparisonTooltip = () => {
+                    tooltip.visible = false;
+                };
+                
+                const getComparisonColor = (hoveredValue, equippedValue) => {
+                    if (hoveredValue > equippedValue) return 'text-green-400';
+                    if (hoveredValue < equippedValue) return 'text-red-400';
+                    return 'text-gray-400';
                 };
 
                 let gameLoopInterval, saveInterval, cooldownInterval, eventInterval;
@@ -1312,7 +1371,7 @@
                         }
                     }, 1000);
 
-                    eventInterval = setInterval(triggerRandomEvent, 2 * 60 * 1000); // Chance for event every 2 minutes
+                    eventInterval = setInterval(triggerRandomEvent, 2 * 60 * 1000);
                 });
 
                 watch(() => gameState.attributes.ofuscacao, () => {
@@ -1332,9 +1391,9 @@
                     activeView, isMenuOpen, menuTabs, floatingTexts, actionPanelRef, toast,
                     showOfflineModal, offlineGains,
                     showConfirmModal, confirmTitle, confirmMessage,
-                    hackProgress, isPlayerDisconnected: isPlayerDisconnected, playerDisconnectedTimer: playerDisconnectedTimer,
+                    hackProgress, isPlayerDisconnected, playerDisconnectedTimer,
                     activeEvent, activeEventTimer,
-                    inventorySort,
+                    inventorySort, tooltip,
                     // Computed
                     computedStats, currentTargetSystem, prestigePointsToGain, activeSkills,
                     skillTree,
@@ -1350,7 +1409,7 @@
                     saveGame, resetGame, prestigeReset, selectSystem,
                     askForConfirmation, handleConfirm, cancelConfirm,
                     toggleMenu, openView, closeView, upgradeHackSpeed, upgradeCritChance, upgradeCritMultiplier, upgradeComboDuration,
-                    getAchievementProgress,
+                    getAchievementProgress, showComparisonTooltip, hideComparisonTooltip, getComparisonColor,
                     PRESTIGE_LEVEL_REQ,
                     systemData
                 };
