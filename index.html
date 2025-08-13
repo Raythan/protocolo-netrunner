@@ -291,37 +291,55 @@
                          </div>
                     </div>
                     <!-- Treinamento -->
-                    <div v-if="activeView === 'training'" class="space-y-2">
-                        <div v-for="(value, attr) in gameState.attributes" :key="attr" class="flex items-center justify-between bg-gray-800 p-3 rounded-lg">
-                            <p class="font-bold capitalize">Treinar {{ {processamento: 'Processamento', agilidade: 'Agilidade', ofuscacao: 'Ofuscação'}[attr] || attr }}</p>
-                            <button @click="trainAttribute(attr)" :disabled="gameState.creds < getTrainCost(attr)" class="font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getTrainCost(attr)) }} Creds</button>
+                    <div v-if="activeView === 'training'" class="space-y-4">
+                        <div class="bg-gray-800 p-3 rounded-lg">
+                            <div class="flex justify-between items-center mb-3">
+                                <h3 class="font-pixel text-cyan-400">Atributos</h3>
+                                <div class="flex gap-2 items-center">
+                                    <span class="text-xs font-pixel">Comprar:</span>
+                                    <button @click="setPurchaseAmount(1)" class="font-pixel text-xs py-1 px-3 rounded-md" :class="purchaseAmount === 1 ? 'bg-cyan-500 text-black' : 'bg-gray-600'">x1</button>
+                                    <button @click="setPurchaseAmount(10)" class="font-pixel text-xs py-1 px-3 rounded-md" :class="purchaseAmount === 10 ? 'bg-cyan-500 text-black' : 'bg-gray-600'">x10</button>
+                                    <button @click="setPurchaseAmount('MAX')" class="font-pixel text-xs py-1 px-3 rounded-md" :class="purchaseAmount === 'MAX' ? 'bg-cyan-500 text-black' : 'bg-gray-600'">MAX</button>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <div v-for="(value, attr) in gameState.attributes" :key="attr" class="flex items-center justify-between bg-gray-900 p-3 rounded-lg">
+                                    <div>
+                                        <p class="font-bold capitalize">Treinar {{ {processamento: 'Processamento', agilidade: 'Agilidade', ofuscacao: 'Ofuscação'}[attr] || attr }}</p>
+                                        <p class="text-sm text-gray-400">Nível: {{ formatNumber(value) }} <span class="text-green-400">(+{{ getAttributePurchaseAmount(attr) }})</span></p>
+                                    </div>
+                                    <button @click="trainAttribute(attr)" :disabled="gameState.creds < getTrainCost(attr)" class="font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getTrainCost(attr)) }} Creds</button>
+                                </div>
+                            </div>
                         </div>
+                        
                         <hr class="border-gray-700 my-4">
+
                         <div class="flex items-center justify-between bg-gray-800 p-3 rounded-lg">
                             <div>
                                 <p class="font-bold capitalize">Aprimorar Velocidade de Invasão</p>
-                                <p class="text-sm text-gray-400">Velocidade atual: Nível {{ formatNumber(gameState.hackSpeedLevel) }}</p>
+                                <p class="text-sm text-gray-400">Nível {{ formatNumber(gameState.hackSpeedLevel) }} <span class="text-green-400">(Próximo: +10%)</span></p>
                             </div>
                             <button @click="upgradeHackSpeed" :disabled="gameState.creds < getHackSpeedUpgradeCost" class="font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getHackSpeedUpgradeCost) }} Creds</button>
                         </div>
                         <div class="flex items-center justify-between bg-gray-800 p-3 rounded-lg">
                             <div>
                                 <p class="font-bold capitalize">Aprimorar Chance Crítica</p>
-                                <p class="text-sm text-gray-400">Chance atual: {{ formatNumber(computedStats.critChance * 100, 2) }}%</p>
+                                <p class="text-sm text-gray-400">{{ formatNumber(computedStats.critChance * 100, 2) }}% <span class="text-green-400">(Próximo: {{ formatNumber((computedStats.critChance + 0.005) * 100, 2) }}%)</span></p>
                             </div>
                             <button @click="upgradeCritChance" :disabled="gameState.creds < getCritChanceUpgradeCost" class="font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getCritChanceUpgradeCost) }} Creds</button>
                         </div>
                         <div class="flex items-center justify-between bg-gray-800 p-3 rounded-lg">
                             <div>
                                 <p class="font-bold capitalize">Aprimorar Multiplicador Crítico</p>
-                                <p class="text-sm text-gray-400">Multiplicador atual: +{{ formatNumber((computedStats.critMultiplier - 1) * 100) }}%</p>
+                                <p class="text-sm text-gray-400">+{{ formatNumber((computedStats.critMultiplier - 1) * 100) }}% <span class="text-green-400">(Próximo: +{{ formatNumber(computedStats.critMultiplier * 100) }}%)</span></p>
                             </div>
                             <button @click="upgradeCritMultiplier" :disabled="gameState.creds < getCritMultiplierUpgradeCost" class="font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getCritMultiplierUpgradeCost) }} Creds</button>
                         </div>
                          <div class="flex items-center justify-between bg-gray-800 p-3 rounded-lg">
                             <div>
                                 <p class="font-bold capitalize">Aprimorar Duração do Combo</p>
-                                <p class="text-sm text-gray-400">Rodadas de Bônus: {{ formatNumber(computedStats.comboRounds) }}</p>
+                                <p class="text-sm text-gray-400">{{ formatNumber(computedStats.comboRounds) }} Rodadas <span class="text-green-400">(Próximo: {{ formatNumber(computedStats.comboRounds + 1) }})</span></p>
                             </div>
                             <button @click="upgradeComboDuration" :disabled="gameState.creds < getComboDurationUpgradeCost" class="font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getComboDurationUpgradeCost) }} Creds</button>
                         </div>
@@ -598,6 +616,7 @@
                 const playerDisconnectedTimer = ref(0);
                 const inventorySort = reactive({ deck: 'rarity', software: 'rarity', implante: 'rarity' });
                 const tooltip = reactive({ visible: false, data: null, style: {} });
+                const purchaseAmount = ref(1);
                 
                 // --- COMPUTED PROPERTIES ---
                 const viewData = {
@@ -812,8 +831,34 @@
                 };
                 
                 const getTrainCost = (attr) => {
-                    const level = Number(gameState.attributes[attr]) || 1;
-                    return Math.floor(10 * Math.pow(1.2, level));
+                    const amount = getAttributePurchaseAmount(attr);
+                    if (amount === 0) return Infinity;
+
+                    let totalCost = 0;
+                    const baseLevel = Number(gameState.attributes[attr]) || 1;
+                    for (let i = 0; i < amount; i++) {
+                        totalCost += Math.floor(10 * Math.pow(1.2, baseLevel + i));
+                    }
+                    return totalCost;
+                };
+
+                const getAttributePurchaseAmount = (attr) => {
+                    if (purchaseAmount.value !== 'MAX') {
+                        return purchaseAmount.value;
+                    }
+                    let creds = gameState.creds;
+                    let amount = 0;
+                    let currentLevel = Number(gameState.attributes[attr]) || 1;
+                    while (true) {
+                        const cost = Math.floor(10 * Math.pow(1.2, currentLevel + amount));
+                        if (creds >= cost) {
+                            creds -= cost;
+                            amount++;
+                        } else {
+                            break;
+                        }
+                    }
+                    return amount;
                 };
 
                 const showFloatingText = (content, color, position, icon = null) => {
@@ -1085,10 +1130,15 @@
 
                 const trainAttribute = (attr) => {
                     const cost = getTrainCost(attr);
-                    if (gameState.creds >= cost) {
+                    const amount = getAttributePurchaseAmount(attr);
+                    if (gameState.creds >= cost && amount > 0) {
                         gameState.creds -= cost;
-                        gameState.attributes[attr]++;
+                        gameState.attributes[attr] += amount;
                     }
+                };
+
+                const setPurchaseAmount = (amount) => {
+                    purchaseAmount.value = amount;
                 };
 
                 const upgradeHackSpeed = () => {
@@ -1393,7 +1443,7 @@
                     showConfirmModal, confirmTitle, confirmMessage,
                     hackProgress, isPlayerDisconnected, playerDisconnectedTimer,
                     activeEvent, activeEventTimer,
-                    inventorySort, tooltip,
+                    inventorySort, tooltip, purchaseAmount,
                     // Computed
                     computedStats, currentTargetSystem, prestigePointsToGain, activeSkills,
                     skillTree,
@@ -1403,9 +1453,9 @@
                     currentViewName, currentViewIcon,
                     getHackSpeedUpgradeCost, getCritChanceUpgradeCost, getCritMultiplierUpgradeCost, getComboDurationUpgradeCost,
                     // Methods
-                    formatNumber, getItem, getAgentCost, getTrainCost,
+                    formatNumber, getItem, getAgentCost, getTrainCost, getAttributePurchaseAmount,
                     manualClick, equipItem, sellItem, sellAllUnequipped, setSort,
-                    buyAgent, trainAttribute, buySkill, activateSkill,
+                    buyAgent, trainAttribute, setPurchaseAmount, buySkill, activateSkill,
                     saveGame, resetGame, prestigeReset, selectSystem,
                     askForConfirmation, handleConfirm, cancelConfirm,
                     toggleMenu, openView, closeView, upgradeHackSpeed, upgradeCritChance, upgradeCritMultiplier, upgradeComboDuration,
