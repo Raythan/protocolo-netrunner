@@ -20,6 +20,9 @@
     <!-- Day.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"></script>
 
+    <!-- Howler.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap');
         
@@ -60,6 +63,25 @@
             to { transform: translateX(0); }
         }
         .toast { animation: toastInRight 0.5s ease-out forwards; }
+        
+        /* Novas Animações de UX */
+        @keyframes target-hit {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 25px currentColor); }
+            100% { transform: scale(1); }
+        }
+        .target-hit-animation {
+            animation: target-hit 0.2s ease-out;
+        }
+
+        @keyframes progress-flash {
+          from { box-shadow: 0 0 15px 5px rgba(255, 255, 255, 0.7); }
+          to { box-shadow: none; }
+        }
+        .progress-flash-animation {
+          animation: progress-flash 0.4s ease-out;
+        }
+        /* Fim das Novas Animações */
 
         .skill-node { position: relative; }
         .skill-node.locked { filter: grayscale(80%) brightness(50%); }
@@ -368,6 +390,14 @@
 
         const appLogic = {
             setup() {
+                // --- SOUND MANAGER (CORRIGIDO) ---
+                const sounds = {
+                    click: new Howl({ src: ['https://cdn.pixabay.com/download/audio/2022/03/15/audio_2b2354396d.mp3'], volume: 0.6 }),
+                    hackSuccess: new Howl({ src: ['https://cdn.pixabay.com/download/audio/2022/11/17/audio_84f2821f4a.mp3'], volume: 0.3 }),
+                    loot: new Howl({ src: ['https://cdn.pixabay.com/download/audio/2022/01/21/audio_ea911f1373.mp3'], volume: 0.7 }),
+                    levelUp: new Howl({ src: ['https://cdn.pixabay.com/download/audio/2022/09/23/audio_a756937392.mp3'], volume: 0.5 })
+                };
+
                 // --- GAME DATA (Constants) ---
                 const PRESTIGE_LEVEL_REQ = 50;
 
@@ -766,6 +796,16 @@
 
                 const manualClick = () => {
                     if (isPlayerDisconnected.value) return;
+                    sounds.click.play();
+
+                    // Adiciona a classe de animação no elemento do ícone
+                    const targetIcon = actionPanelRef.value.querySelector('.fa-solid');
+                    if (targetIcon) {
+                        targetIcon.classList.add('target-hit-animation');
+                        // Remove a classe após a animação para que possa ser reativada
+                        setTimeout(() => targetIcon.classList.remove('target-hit-animation'), 200);
+                    }
+
                     const now = Date.now();
                     if (now - gameState.lastClickTimestamp < 2000) { // 2 second combo window
                         gameState.comboCount = Math.min(10, gameState.comboCount + 1);
@@ -787,10 +827,18 @@
                 };
 
                 const resolveHack = () => {
+                    sounds.hackSuccess.play();
                     const playerStats = computedStats.value;
                     const system = currentTargetSystem.value;
                     const rect = actionPanelRef.value.getBoundingClientRect();
                     const position = { x: rect.width / 2, y: rect.height / 2 };
+
+                    // Adiciona a animação na barra de progresso
+                    const progressBar = actionPanelRef.value.querySelector('.bg-cyan-400');
+                    if (progressBar) {
+                        progressBar.classList.add('progress-flash-animation');
+                        setTimeout(() => progressBar.classList.remove('progress-flash-animation'), 400);
+                    }
 
                     let comboMultiplier = 1;
                     if (gameState.comboBonusActive) {
@@ -859,7 +907,8 @@
                 const generateLoot = (system) => {
                     const finalDropChance = system.loot.dropChance + (computedStats.value.lootChanceBonus || 0);
                     if (!system.loot || Math.random() > finalDropChance) return;
-
+                    
+                    sounds.loot.play();
                     const availableRarities = Object.entries(rarities).filter(([key, rarity]) => gameState.level >= rarity.minLevel);
                     if (availableRarities.length === 0) return;
 
@@ -921,6 +970,7 @@
                 };
 
                 const levelUp = () => {
+                    sounds.levelUp.play();
                     while (gameState.rep >= gameState.repToNextLevel) {
                         gameState.level++;
                         gameState.rep -= gameState.repToNextLevel;
