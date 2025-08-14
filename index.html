@@ -55,11 +55,11 @@
         }
         .floating-text { animation: floatUp 1.5s ease-out forwards; }
 
-        @keyframes toastInRight {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
+        @keyframes toastInDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
         }
-        .toast { animation: toastInRight 0.5s ease-out forwards; }
+        .toast { animation: toastInDown 0.5s ease-out forwards; }
         
         @keyframes target-hit {
             0% { transform: scale(1); }
@@ -329,12 +329,12 @@
                         <hr class="border-gray-700 my-6">
                         <h3 class="font-pixel text-cyan-400">Comprar Habilidades Ativas</h3>
                          <div v-for="skill in skillsData.active.filter(s => !gameState.skills.active[s.id])" :key="skill.id">
-                             <div class="flex items-center justify-between bg-gray-800 p-3 rounded-lg">
-                                 <div>
+                             <div class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg">
+                                 <div class="w-full sm:w-auto text-center sm:text-left">
                                      <p class="font-bold"><i :class="['fa-solid', skill.icon, 'mr-2']"></i>{{ skill.name }}</p>
                                      <p class="text-sm text-gray-400">{{ skill.description }}</p>
                                  </div>
-                                 <button @click="buySkill('active', skill.id)" :disabled="gameState.creds < skill.cost" class="font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(skill.cost) }} Creds</button>
+                                 <button @click="buySkill('active', skill.id)" :disabled="gameState.creds < skill.cost" class="w-full sm:w-auto mt-2 sm:mt-0 font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(skill.cost) }} Creds</button>
                              </div>
                          </div>
                     </div>
@@ -380,7 +380,7 @@
                 </div>
             </div>
         </div>
-        <div v-if="toast.show" class="toast fixed bottom-5 right-5 bg-cyan-500 text-black font-pixel text-sm p-4 rounded-lg shadow-lg z-50" :style="{backgroundColor: toast.color || 'var(--highlight-color)'}">
+        <div v-if="toast.show" class="toast fixed top-5 left-1/2 -translate-x-1/2 bg-cyan-500 text-black font-pixel text-sm p-4 rounded-lg shadow-lg z-50" :style="{backgroundColor: toast.color || 'var(--highlight-color)'}">
             <i :class="['fa-solid', toast.icon, 'mr-2']"></i>{{ toast.message }}
         </div>
     </div>
