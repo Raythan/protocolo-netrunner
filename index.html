@@ -270,18 +270,18 @@
                     </div>
                     <!-- Scripts -->
                     <div v-if="activeView === 'scripts'" class="space-y-2">
-                         <div v-for="agent in agentsData" :key="agent.id" class="flex items-center justify-between bg-gray-800 p-3 rounded-lg">
-                            <div>
+                         <div v-for="agent in agentsData" :key="agent.id" class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg">
+                            <div class="w-full sm:w-auto text-center sm:text-left">
                                 <p class="font-bold"><i :class="['fa-solid', agent.icon, 'mr-2']"></i>{{ agent.name }} ({{ gameState.agents[agent.id] || 0 }})</p>
                                 <p class="text-sm text-gray-400">+{{ formatNumber(agent.cps, 2) }} Creds/s</p>
                             </div>
-                            <button @click="buyAgent(agent.id)" :disabled="gameState.creds < getAgentCost(agent.id)" class="font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getAgentCost(agent.id)) }} Creds</button>
+                            <button @click="buyAgent(agent.id)" :disabled="gameState.creds < getAgentCost(agent.id)" class="w-full sm:w-auto mt-2 sm:mt-0 font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getAgentCost(agent.id)) }} Creds</button>
                          </div>
                     </div>
                     <!-- Treinamento -->
                     <div v-if="activeView === 'training'" class="space-y-4">
                         <div class="bg-gray-800 p-3 rounded-lg">
-                            <div class="flex justify-between items-center mb-3">
+                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 gap-2">
                                 <h3 class="font-pixel text-cyan-400">Atributos</h3>
                                 <div class="flex gap-2 items-center">
                                     <span class="text-xs font-pixel">Comprar:</span>
@@ -291,45 +291,24 @@
                                 </div>
                             </div>
                             <div class="space-y-2">
-                                <div v-for="(value, attr) in gameState.attributes" :key="attr" class="flex items-center justify-between bg-gray-900 p-3 rounded-lg">
-                                    <div>
+                                <div v-for="(value, attr) in gameState.attributes" :key="attr" class="flex flex-col sm:flex-row items-center justify-between bg-gray-900 p-3 rounded-lg gap-2">
+                                    <div class="text-center sm:text-left">
                                         <p class="font-bold capitalize">Treinar {{ {processamento: 'Processamento', agilidade: 'Agilidade', ofuscacao: 'Ofuscação'}[attr] || attr }}</p>
                                         <p class="text-sm text-gray-400">Nível: {{ formatNumber(value) }} <span class="text-green-400">(+{{ getAttributePurchaseAmount(attr) }})</span></p>
                                     </div>
-                                    <button @click="trainAttribute(attr)" :disabled="gameState.creds < getTrainCost(attr)" class="font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getTrainCost(attr)) }} Creds</button>
+                                    <button @click="trainAttribute(attr)" :disabled="gameState.creds < getTrainCost(attr)" class="w-full sm:w-auto font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getTrainCost(attr)) }} Creds</button>
                                 </div>
                             </div>
                         </div>
                         
                         <hr class="border-gray-700 my-4">
 
-                        <div class="flex items-center justify-between bg-gray-800 p-3 rounded-lg">
-                            <div>
-                                <p class="font-bold capitalize">Aprimorar Velocidade de Invasão</p>
-                                <p class="text-sm text-gray-400">Nível {{ formatNumber(gameState.hackSpeedLevel) }} <span class="text-green-400">(Próximo: +10%)</span></p>
+                        <div v-for="upgrade in otherUpgrades" :key="upgrade.id" class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg gap-2">
+                            <div class="text-center sm:text-left">
+                                <p class="font-bold capitalize">{{ upgrade.name }}</p>
+                                <p class="text-sm text-gray-400">{{ upgrade.currentLevel }} <span class="text-green-400">({{ upgrade.nextLevel }})</span></p>
                             </div>
-                            <button @click="upgradeHackSpeed" :disabled="gameState.creds < getHackSpeedUpgradeCost" class="font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getHackSpeedUpgradeCost) }} Creds</button>
-                        </div>
-                        <div class="flex items-center justify-between bg-gray-800 p-3 rounded-lg">
-                            <div>
-                                <p class="font-bold capitalize">Aprimorar Chance Crítica</p>
-                                <p class="text-sm text-gray-400">{{ formatNumber(computedStats.critChance * 100, 2) }}% <span class="text-green-400">(Próximo: {{ formatNumber((computedStats.critChance + 0.005) * 100, 2) }}%)</span></p>
-                            </div>
-                            <button @click="upgradeCritChance" :disabled="gameState.creds < getCritChanceUpgradeCost" class="font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getCritChanceUpgradeCost) }} Creds</button>
-                        </div>
-                        <div class="flex items-center justify-between bg-gray-800 p-3 rounded-lg">
-                            <div>
-                                <p class="font-bold capitalize">Aprimorar Multiplicador Crítico</p>
-                                <p class="text-sm text-gray-400">+{{ formatNumber((computedStats.critMultiplier - 1) * 100) }}% <span class="text-green-400">(Próximo: +{{ formatNumber(computedStats.critMultiplier * 100) }}%)</span></p>
-                            </div>
-                            <button @click="upgradeCritMultiplier" :disabled="gameState.creds < getCritMultiplierUpgradeCost" class="font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getCritMultiplierUpgradeCost) }} Creds</button>
-                        </div>
-                         <div class="flex items-center justify-between bg-gray-800 p-3 rounded-lg">
-                            <div>
-                                <p class="font-bold capitalize">Aprimorar Duração do Combo</p>
-                                <p class="text-sm text-gray-400">{{ formatNumber(computedStats.comboRounds) }} Rodadas <span class="text-green-400">(Próximo: {{ formatNumber(computedStats.comboRounds + 1) }})</span></p>
-                            </div>
-                            <button @click="upgradeComboDuration" :disabled="gameState.creds < getComboDurationUpgradeCost" class="font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getComboDurationUpgradeCost) }} Creds</button>
+                            <button @click="upgrade.action" :disabled="gameState.creds < upgrade.cost" class="w-full sm:w-auto font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(upgrade.cost) }} Creds</button>
                         </div>
                     </div>
                     <!-- Habilidades -->
@@ -756,6 +735,13 @@
                 const availableSystems = computed(() => {
                     return systemData.filter(system => gameState.level >= system.level);
                 });
+                
+                const otherUpgrades = computed(() => [
+                    { id: 'upgradeHackSpeed', name: 'Aprimorar Velocidade de Invasão', currentLevel: `Nível ${formatNumber(gameState.hackSpeedLevel)}`, nextLevel: 'Próximo: +10%', cost: getHackSpeedUpgradeCost.value, action: upgradeHackSpeed },
+                    { id: 'upgradeCritChance', name: 'Aprimorar Chance Crítica', currentLevel: `${formatNumber(computedStats.value.critChance * 100, 2)}%`, nextLevel: `Próximo: ${formatNumber((computedStats.value.critChance + 0.005) * 100, 2)}%`, cost: getCritChanceUpgradeCost.value, action: upgradeCritChance },
+                    { id: 'upgradeCritMultiplier', name: 'Aprimorar Multiplicador Crítico', currentLevel: `+${formatNumber((computedStats.value.critMultiplier - 1) * 100)}%`, nextLevel: `Próximo: +${formatNumber(computedStats.value.critMultiplier * 100)}%`, cost: getCritMultiplierUpgradeCost.value, action: upgradeCritMultiplier },
+                    { id: 'upgradeComboDuration', name: 'Aprimorar Duração do Combo', currentLevel: `${formatNumber(computedStats.value.comboRounds)} Rodadas`, nextLevel: `Próximo: ${formatNumber(computedStats.value.comboRounds + 1)}`, cost: getComboDurationUpgradeCost.value, action: upgradeComboDuration }
+                ]);
 
                 // --- METHODS ---
                 const toggleMenu = () => isMenuOpen.value = !isMenuOpen.value;
@@ -1381,6 +1367,7 @@
                     availableSystems,
                     currentViewName, currentViewIcon,
                     getHackSpeedUpgradeCost, getCritChanceUpgradeCost, getCritMultiplierUpgradeCost, getComboDurationUpgradeCost,
+                    otherUpgrades,
                     // Methods
                     formatNumber, getItem, getAgentCost, getTrainCost, getAttributePurchaseAmount,
                     manualClick, equipItem, sellItem, sellAllUnequipped, setSort,
