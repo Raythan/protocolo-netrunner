@@ -20,9 +20,6 @@
     <!-- Day.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"></script>
 
-    <!-- Howler.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap');
         
@@ -95,16 +92,9 @@
             flex-direction: column;
         }
 
-        /* Novas Classes de UX */
         .equipped-highlight {
             box-shadow: 0 0 10px var(--highlight-color);
             border-color: var(--highlight-color) !important;
-        }
-        .item-tooltip {
-            position: fixed;
-            z-index: 100;
-            pointer-events: none;
-            transition: opacity 0.2s;
         }
     </style>
 </head>
@@ -235,7 +225,7 @@
 
                             <div v-for="(items, title) in { 'Atributos': gameState.attributes, 'Estatísticas': computedStats }" :key="title" class="mt-6">
                                 <h3 class="font-pixel text-cyan-400 text-sm mb-2">{{ title }}</h3>
-                                <div class="grid grid-cols-2 gap-2">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <div v-for="(value, key) in items" :key="key" class="bg-gray-800 p-2 rounded-lg text-center">
                                         <p class="text-xs capitalize text-gray-400">{{ {invasionPower: 'Poder de Invasão', security: 'Segurança', credsPerSecond: 'Creds / Seg', repMultiplier: 'Bônus de REP', critChance: 'Chance Crítica', critMultiplier: 'Multiplicador Crítico', prestigeBonus: 'Bônus de Prestígio', achievementBonus: 'Bônus de Conquista', maxTrace: 'Rastreamento Máx.', lootChanceBonus: 'Chance de Loot', traceResist: 'Resist. Rastreamento'}[key] || key.replace(/([A-Z])/g, ' $1') }}</p>
                                         <p class="font-pixel text-lg" :class="{'text-pink-400': key === 'prestigeBonus', 'text-yellow-400': key === 'achievementBonus', 'text-cyan-400': !['prestigeBonus', 'achievementBonus'].includes(key)}">
@@ -249,9 +239,9 @@
                     <!-- Hardware -->
                     <div v-if="activeView === 'hardware'">
                         <div v-for="(items, type) in sortedInventory" :key="type" class="mb-6">
-                            <div class="flex justify-between items-center mb-3">
+                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 gap-y-2">
                                 <h3 class="font-pixel text-cyan-400 capitalize">{{ {deck: 'Decks de Invasão', software: 'Softwares', implante: 'Implantes'}[type] || type }}</h3>
-                                <div class="flex gap-2 items-center">
+                                <div class="flex flex-wrap gap-2 items-center">
                                      <button @click="askForConfirmation('Vender Tudo', `Vender todos os itens de ${type} não equipados?`, () => sellAllUnequipped(type))" class="font-pixel text-xs py-1 px-2 rounded-md bg-red-800 text-white hover:bg-red-700 transition">Vender Todos</button>
                                     <div class="text-xs font-pixel">Ordenar:</div>
                                     <button @click="setSort(type, 'rarity')" class="font-pixel text-xs py-1 px-2 rounded-md" :class="inventorySort[type] === 'rarity' ? 'bg-cyan-500 text-black' : 'bg-gray-600'">Raridade</button>
@@ -261,20 +251,18 @@
                             <div class="space-y-2 mt-2">
                                 <div v-if="!items.length" class="text-center text-gray-500 p-4 bg-gray-800 rounded-lg">Inventário Vazio</div>
                                 <div v-for="item in items" :key="item.uniqueId" 
-                                     @mouseenter="showComparisonTooltip(type, item, $event)"
-                                     @mouseleave="hideComparisonTooltip"
-                                     class="flex items-center justify-between bg-gray-800 p-3 rounded-lg border-l-4 transition-all" 
+                                     class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg border-l-4 transition-all" 
                                      :class="{ 'equipped-highlight': gameState.equipment[type] === item.uniqueId }"
                                      :style="{borderLeftColor: item.rarityColor}">
-                                    <div>
+                                    <div class="w-full sm:w-auto text-center sm:text-left">
                                         <p class="font-bold" :style="{color: item.rarityColor}"><i :class="['fa-solid', item.icon, 'mr-2']"></i>{{ item.name }}</p>
                                         <p class="text-sm text-gray-400">+{{ formatNumber(item.bonus.value) }} {{ {processamento: 'Processamento', ofuscacao: 'Ofuscação', agilidade: 'Agilidade'}[item.bonus.stat] || item.bonus.stat }}</p>
                                         <p v-if="item.specialEffect" class="text-xs text-cyan-400 mt-1"><i class="fa-solid fa-star-of-life mr-1"></i>{{ item.specialEffect.description }}</p>
                                     </div>
-                                    <div class="flex gap-2">
-                                        <button @click="sellItem(type, item.uniqueId)" :disabled="gameState.equipment[type] === item.uniqueId" class="font-pixel text-xs py-2 px-3 rounded-md bg-red-600 text-white hover:bg-red-500 transition disabled:bg-gray-700 disabled:cursor-not-allowed">Vender</button>
-                                        <button v-if="gameState.equipment[type] === item.uniqueId" class="font-pixel text-xs py-2 px-3 rounded-md bg-gray-600" disabled>Instalado</button>
-                                        <button v-else @click="equipItem(type, item.uniqueId)" class="font-pixel text-xs py-2 px-3 rounded-md bg-yellow-500 text-black hover:bg-yellow-400 transition">Instalar</button>
+                                    <div class="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                                        <button @click="sellItem(type, item.uniqueId)" :disabled="gameState.equipment[type] === item.uniqueId" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-red-600 text-white hover:bg-red-500 transition disabled:bg-gray-700 disabled:cursor-not-allowed">Vender</button>
+                                        <button v-if="gameState.equipment[type] === item.uniqueId" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-gray-600" disabled>Instalado</button>
+                                        <button v-else @click="equipItem(type, item.uniqueId)" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-yellow-500 text-black hover:bg-yellow-400 transition">Instalar</button>
                                     </div>
                                 </div>
                             </div>
@@ -416,28 +404,6 @@
         <div v-if="toast.show" class="toast fixed bottom-5 right-5 bg-cyan-500 text-black font-pixel text-sm p-4 rounded-lg shadow-lg z-50" :style="{backgroundColor: toast.color || 'var(--highlight-color)'}">
             <i :class="['fa-solid', toast.icon, 'mr-2']"></i>{{ toast.message }}
         </div>
-
-        <!-- Tooltip de Comparação de Hardware -->
-        <div v-if="tooltip.visible" class="item-tooltip bg-gray-900 border-2 border-cyan-400 rounded-lg p-4 w-80 text-sm" :style="tooltip.style">
-            <div v-if="tooltip.data" class="grid grid-cols-2 gap-4">
-                <!-- Item Hovered -->
-                <div>
-                    <h4 class="font-bold" :style="{color: tooltip.data.hovered.rarityColor}">{{ tooltip.data.hovered.name }}</h4>
-                    <p class="text-gray-400">+{{ formatNumber(tooltip.data.hovered.bonus.value) }} {{ {processamento: 'Proc', ofuscacao: 'Ofus', agilidade: 'Agil'}[tooltip.data.hovered.bonus.stat] || tooltip.data.hovered.bonus.stat }}</p>
-                    <p v-if="tooltip.data.hovered.specialEffect" class="text-xs text-cyan-400 mt-1">{{ tooltip.data.hovered.specialEffect.description }}</p>
-                </div>
-                <!-- Item Equipado -->
-                <div>
-                    <h4 class="font-bold text-gray-400">{{ tooltip.data.equipped ? tooltip.data.equipped.name : 'Vazio' }}</h4>
-                    <template v-if="tooltip.data.equipped">
-                        <p :class="getComparisonColor(tooltip.data.hovered.bonus.value, tooltip.data.equipped.bonus.value)">
-                            +{{ formatNumber(tooltip.data.equipped.bonus.value) }} {{ {processamento: 'Proc', ofuscacao: 'Ofus', agilidade: 'Agil'}[tooltip.data.equipped.bonus.stat] || tooltip.data.equipped.bonus.stat }}
-                        </p>
-                        <p v-if="tooltip.data.equipped.specialEffect" class="text-xs text-gray-500 mt-1">{{ tooltip.data.equipped.specialEffect.description }}</p>
-                    </template>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script type="module">
@@ -445,14 +411,6 @@
 
         const appLogic = {
             setup() {
-                // --- SOUND MANAGER (CORRIGIDO) ---
-                const sounds = {
-                    click: new Howl({ src: ['https://cdn.pixabay.com/download/audio/2022/03/15/audio_2b2354396d.mp3'], volume: 0.6 }),
-                    hackSuccess: new Howl({ src: ['https://cdn.pixabay.com/download/audio/2022/11/17/audio_84f2821f4a.mp3'], volume: 0.3 }),
-                    loot: new Howl({ src: ['https://cdn.pixabay.com/download/audio/2022/01/21/audio_ea911f1373.mp3'], volume: 0.7 }),
-                    levelUp: new Howl({ src: ['https://cdn.pixabay.com/download/audio/2022/09/23/audio_a756937392.mp3'], volume: 0.5 })
-                };
-
                 // --- GAME DATA (Constants) ---
                 const PRESTIGE_LEVEL_REQ = 50;
 
@@ -615,7 +573,6 @@
                 const isPlayerDisconnected = ref(false);
                 const playerDisconnectedTimer = ref(0);
                 const inventorySort = reactive({ deck: 'rarity', software: 'rarity', implante: 'rarity' });
-                const tooltip = reactive({ visible: false, data: null, style: {} });
                 const purchaseAmount = ref(1);
                 
                 // --- COMPUTED PROPERTIES ---
@@ -879,7 +836,6 @@
 
                 const manualClick = () => {
                     if (isPlayerDisconnected.value) return;
-                    sounds.click.play();
 
                     const targetIcon = actionPanelRef.value.querySelector('.fa-solid');
                     if (targetIcon) {
@@ -908,7 +864,6 @@
                 };
 
                 const resolveHack = () => {
-                    sounds.hackSuccess.play();
                     const playerStats = computedStats.value;
                     const system = currentTargetSystem.value;
                     const rect = actionPanelRef.value.getBoundingClientRect();
@@ -988,7 +943,6 @@
                     const finalDropChance = system.loot.dropChance + (computedStats.value.lootChanceBonus || 0);
                     if (!system.loot || Math.random() > finalDropChance) return;
                     
-                    sounds.loot.play();
                     const availableRarities = Object.entries(rarities).filter(([key, rarity]) => gameState.level >= rarity.minLevel);
                     if (availableRarities.length === 0) return;
 
@@ -1050,7 +1004,6 @@
                 };
 
                 const levelUp = () => {
-                    sounds.levelUp.play();
                     while (gameState.rep >= gameState.repToNextLevel) {
                         gameState.level++;
                         gameState.rep -= gameState.repToNextLevel;
@@ -1367,30 +1320,6 @@
                     }
                 };
 
-                // --- Métodos de UX Adicionais ---
-                const showComparisonTooltip = (type, item, event) => {
-                    const equippedItem = getItem(type, gameState.equipment[type]);
-                    tooltip.data = {
-                        hovered: item,
-                        equipped: equippedItem
-                    };
-                    tooltip.style = {
-                        left: `${event.clientX + 15}px`,
-                        top: `${event.clientY + 15}px`
-                    };
-                    tooltip.visible = true;
-                };
-
-                const hideComparisonTooltip = () => {
-                    tooltip.visible = false;
-                };
-                
-                const getComparisonColor = (hoveredValue, equippedValue) => {
-                    if (hoveredValue > equippedValue) return 'text-green-400';
-                    if (hoveredValue < equippedValue) return 'text-red-400';
-                    return 'text-gray-400';
-                };
-
                 let gameLoopInterval, saveInterval, cooldownInterval, eventInterval;
 
                 onMounted(() => {
@@ -1443,7 +1372,7 @@
                     showConfirmModal, confirmTitle, confirmMessage,
                     hackProgress, isPlayerDisconnected, playerDisconnectedTimer,
                     activeEvent, activeEventTimer,
-                    inventorySort, tooltip, purchaseAmount,
+                    inventorySort, purchaseAmount,
                     // Computed
                     computedStats, currentTargetSystem, prestigePointsToGain, activeSkills,
                     skillTree,
@@ -1459,7 +1388,7 @@
                     saveGame, resetGame, prestigeReset, selectSystem,
                     askForConfirmation, handleConfirm, cancelConfirm,
                     toggleMenu, openView, closeView, upgradeHackSpeed, upgradeCritChance, upgradeCritMultiplier, upgradeComboDuration,
-                    getAchievementProgress, showComparisonTooltip, hideComparisonTooltip, getComparisonColor,
+                    getAchievementProgress,
                     PRESTIGE_LEVEL_REQ,
                     systemData
                 };
