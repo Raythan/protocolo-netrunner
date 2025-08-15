@@ -327,7 +327,20 @@
                             </div>
                         </div>
                         <hr class="border-gray-700 my-6">
+                        <h3 class="font-pixel text-cyan-400">Aprimorar Habilidades Ativas</h3>
+                        <div v-if="!activeSkillDetails.length" class="text-center text-gray-500 p-4 bg-gray-800 rounded-lg">Nenhuma habilidade ativa comprada</div>
+                        <div v-for="skill in activeSkillDetails" :key="skill.id" class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg">
+                            <div class="w-full sm:w-auto text-center sm:text-left">
+                                <p class="font-bold"><i :class="['fa-solid', skill.icon, 'mr-2']"></i>{{ skill.name }} (Nível {{ skill.level }})</p>
+                                <p class="text-sm text-gray-400">Atual: {{ skill.currentBonus }}</p>
+                                <p class="text-sm text-green-400" v-if="!skill.isMaxed">Próximo Nível: {{ skill.nextBonus }}</p>
+                                <p class="text-sm text-yellow-400" v-else>NÍVEL MÁXIMO</p>
+                            </div>
+                            <button v-if="!skill.isMaxed" @click="upgradeActiveSkill(skill.id)" :disabled="!skill.canUpgrade" class="w-full sm:w-auto mt-2 sm:mt-0 font-pixel text-sm py-2 px-4 rounded-md bg-green-500 text-black hover:bg-green-400 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(skill.upgradeCost) }} Creds</button>
+                        </div>
+                        <hr class="border-gray-700 my-6">
                         <h3 class="font-pixel text-cyan-400">Comprar Habilidades Ativas</h3>
+                        <div v-if="skillsData.active.filter(s => !gameState.skills.active[s.id]).length === 0" class="text-center text-gray-500 p-4 bg-gray-800 rounded-lg">Todas as habilidades compradas</div>
                          <div v-for="skill in skillsData.active.filter(s => !gameState.skills.active[s.id])" :key="skill.id">
                              <div class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg">
                                  <div class="w-full sm:w-auto text-center sm:text-left">
@@ -477,7 +490,10 @@
 
                 const skillsData = {
                     passive: [ { id: 'p1', name: 'Protocolo de Eficiência', maxLevel: 5, cost: 1, description: 'Aumenta o ganho de REP em 5% por nível.', bonus: { stat: 'repMultiplier', value: 0.05 }, requires: null }, { id: 'p2', name: 'Conexão Neural', maxLevel: 5, cost: 1, description: 'Aumenta a chance de extrair mais Creds em 2% por nível.', bonus: { stat: 'critCredChance', value: 0.02 }, requires: 'p1' }, { id: 'p3', name: 'Otimização de Rota', maxLevel: 10, cost: 2, description: 'Aumenta o ganho de Creds/s em 10% por nível.', bonus: { stat: 'cpsMultiplier', value: 0.10 }, requires: 'p2' } ],
-                    active: [ { id: 'ac1', name: 'Overclock', cost: 2500, icon: 'fa-bolt', description: 'Aumenta o Poder de Invasão em 200% por 10s.', cooldown: 60, duration: 10, effect: { type: 'multiplier', stat: 'invasionPower', value: 2 } }, { id: 'ac2', name: 'Hack de Créditos', cost: 5000, icon: 'fa-sack-dollar', description: 'Gera instantaneamente o equivalente a 30 segundos de ganhos.', cooldown: 120, effect: { type: 'instant', stat: 'creds', value: 30 } }, { id: 'ac3', name: 'Pulso EMP', cost: 15000, icon: 'fa-burst', description: 'Gera instantaneamente o equivalente a 5 minutos de ganhos.', cooldown: 300, effect: { type: 'instant', stat: 'creds', value: 300 } } ]
+                    active: [
+                        { id: 'ac_speed', name: 'Overdrive', cost: 10000, icon: 'fa-bolt', description: 'Velocidade de invasão x2 por 10s.', maxLevel: 10 },
+                        { id: 'ac_gain', name: 'Data Dump', cost: 25000, icon: 'fa-download', description: 'Gera o equivalente a 60s de ganhos.', maxLevel: 10 }
+                    ]
                 };
                 
                 const achievementsData = [ 
@@ -645,11 +661,9 @@
                     const equippedSoftware = getItem('software', eqIds.software);
                     if (equippedSoftware) totalSecurity += equippedSoftware.bonus.value;
                     
-                    if (gameState.activeEffects.overclock) {
-                        const skillInfo = skillsData.active.find(s => s.id === 'ac1');
-                        if (skillInfo) {
-                            totalInvasionPower *= (1 + skillInfo.effect.value);
-                        }
+                    let hackSpeedMultiplier = 1;
+                    if (gameState.activeEffects['ac_speed']) {
+                        hackSpeedMultiplier = gameState.activeEffects['ac_speed'].effect.value;
                     }
 
                     let totalCps = 0;
@@ -674,7 +688,7 @@
                         critMultiplier: 1.5 + (gameState.critMultiplierLevel - 1) * 0.1 + specialBonuses.critMultiplierBonus,
                         prestigeBonus,
                         achievementBonus: achBonus.globalMultiplier,
-                        hackSpeed: ((1 + (gameState.hackSpeedLevel - 1) * 0.1) * eventBonus.hackSpeed),
+                        hackSpeed: ((1 + (gameState.hackSpeedLevel - 1) * 0.1) * eventBonus.hackSpeed) * hackSpeedMultiplier,
                         comboRounds: 5 + (gameState.comboDurationLevel - 1),
                         lootChanceBonus: specialBonuses.lootChanceBonus + achBonus.lootChanceBonus,
                         traceResist: specialBonuses.traceResist
@@ -742,6 +756,44 @@
                     { id: 'upgradeCritMultiplier', name: 'Aprimorar Multiplicador Crítico', currentLevel: `+${formatNumber((computedStats.value.critMultiplier - 1) * 100)}%`, nextLevel: `Próximo: +${formatNumber(computedStats.value.critMultiplier * 100)}%`, cost: getCritMultiplierUpgradeCost.value, action: upgradeCritMultiplier },
                     { id: 'upgradeComboDuration', name: 'Aprimorar Duração do Combo', currentLevel: `${formatNumber(computedStats.value.comboRounds)} Rodadas`, nextLevel: `Próximo: ${formatNumber(computedStats.value.comboRounds + 1)}`, cost: getComboDurationUpgradeCost.value, action: upgradeComboDuration }
                 ]);
+
+                const activeSkillDetails = computed(() => {
+                    return skillsData.active.map(skill => {
+                        const level = gameState.skills.active[skill.id] || 0;
+                        if (level === 0) return null;
+
+                        const isMaxed = level >= skill.maxLevel;
+                        let upgradeCost, currentBonus, nextBonus;
+
+                        if (skill.id === 'ac_speed') {
+                            upgradeCost = Math.floor(skill.cost * Math.pow(2.5, level));
+                            const currentMultiplier = 2 + (level - 1);
+                            const currentDuration = 10 + (level - 1) * 2;
+                            currentBonus = `Velocidade x${currentMultiplier} por ${currentDuration}s`;
+                            
+                            const nextMultiplier = 2 + level;
+                            const nextDuration = 10 + level * 2;
+                            nextBonus = `Velocidade x${nextMultiplier} por ${nextDuration}s`;
+                        } else if (skill.id === 'ac_gain') {
+                            upgradeCost = Math.floor(skill.cost * Math.pow(3, level));
+                            const currentGain = 60 + (level - 1) * 30;
+                            currentBonus = `Ganhos de ${currentGain}s`;
+
+                            const nextGain = 60 + level * 30;
+                            nextBonus = `Ganhos de ${nextGain}s`;
+                        }
+
+                        return {
+                            ...skill,
+                            level,
+                            isMaxed,
+                            canUpgrade: !isMaxed && gameState.creds >= upgradeCost,
+                            upgradeCost,
+                            currentBonus,
+                            nextBonus
+                        };
+                    }).filter(s => s !== null);
+                });
 
                 // --- METHODS ---
                 const toggleMenu = () => isMenuOpen.value = !isMenuOpen.value;
@@ -1123,19 +1175,36 @@
                         const skill = skillsData.active.find(s => s.id === id);
                         if (skill && gameState.creds >= skill.cost && !gameState.skills.active[id]) {
                             gameState.creds -= skill.cost;
-                            gameState.skills.active[id] = true;
+                            gameState.skills.active[id] = 1; // Set initial level to 1
                         }
                     }
                 };
                 
+                const upgradeActiveSkill = (skillId) => {
+                    const skillDetails = activeSkillDetails.value.find(s => s.id === skillId);
+                    if (skillDetails && skillDetails.canUpgrade) {
+                        gameState.creds -= skillDetails.upgradeCost;
+                        gameState.skills.active[skillId]++;
+                    }
+                };
+
                 const activateSkill = (id) => {
                     const skill = skillsData.active.find(s => s.id === id);
-                    if (!skill || (gameState.skillCooldowns[id] || 0) > dayjs().valueOf()) return;
-                    gameState.skillCooldowns[id] = dayjs().add(skill.cooldown, 'second').valueOf();
-                    if (skill.effect.type === 'multiplier') {
-                        gameState.activeEffects.overclock = { expiry: dayjs().add(skill.duration, 'second').valueOf() };
-                    } else if (skill.effect.type === 'instant') {
-                        addCreds(computedStats.value.credsPerSecond * skill.effect.value * computedStats.value.prestigeBonus);
+                    const level = gameState.skills.active[id] || 0;
+                    if (!skill || level === 0 || (gameState.skillCooldowns[id] || 0) > dayjs().valueOf()) return;
+
+                    gameState.skillCooldowns[id] = dayjs().add(60, 'second').valueOf(); // 60s cooldown
+
+                    if (id === 'ac_speed') {
+                        const multiplier = 2 + (level - 1);
+                        const duration = 10 + (level - 1) * 2;
+                        gameState.activeEffects[id] = {
+                            expiry: dayjs().add(duration, 'second').valueOf(),
+                            effect: { type: 'multiplier', stat: 'hackSpeed', value: multiplier }
+                        };
+                    } else if (id === 'ac_gain') {
+                        const secondsOfGain = 60 + (level - 1) * 30;
+                        addCreds(computedStats.value.credsPerSecond * secondsOfGain);
                     }
                 };
 
@@ -1368,10 +1437,11 @@
                     currentViewName, currentViewIcon,
                     getHackSpeedUpgradeCost, getCritChanceUpgradeCost, getCritMultiplierUpgradeCost, getComboDurationUpgradeCost,
                     otherUpgrades,
+                    activeSkillDetails,
                     // Methods
                     formatNumber, getItem, getAgentCost, getTrainCost, getAttributePurchaseAmount,
                     manualClick, equipItem, sellItem, sellAllUnequipped, setSort,
-                    buyAgent, trainAttribute, setPurchaseAmount, buySkill, activateSkill,
+                    buyAgent, trainAttribute, setPurchaseAmount, buySkill, activateSkill, upgradeActiveSkill,
                     saveGame, resetGame, prestigeReset, selectSystem,
                     askForConfirmation, handleConfirm, cancelConfirm,
                     toggleMenu, openView, closeView, upgradeHackSpeed, upgradeCritChance, upgradeCritMultiplier, upgradeComboDuration,
