@@ -96,6 +96,10 @@
             box-shadow: 0 0 10px var(--highlight-color);
             border-color: var(--highlight-color) !important;
         }
+        
+        .menu-scroll-container::-webkit-scrollbar { width: 6px; }
+        .menu-scroll-container::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 10px; }
+        .menu-scroll-container::-webkit-scrollbar-thumb { background-color: var(--highlight-color); border-radius: 10px; }
     </style>
 </head>
 <body class="bg-[#0d0208] text-gray-200">
@@ -170,10 +174,12 @@
         <!-- Botão Flutuante (FAB) e Menu -->
         <div class="fixed bottom-6 right-6 z-40">
             <transition name="menu-fade">
-                <div v-if="isMenuOpen" class="flex flex-col items-center gap-3 mb-3">
-                    <button v-for="tab in menuTabs" :key="tab.id" @click="openView(tab.id)" class="w-14 h-14 rounded-full bg-cyan-400 text-black flex items-center justify-center shadow-lg hover:bg-cyan-300 transition-transform hover:scale-110" :title="tab.name">
-                        <i :class="['fa-solid', tab.icon, 'text-2xl']"></i>
-                    </button>
+                <div v-if="isMenuOpen" class="flex flex-col items-center mb-3">
+                    <div class="max-h-[70vh] overflow-y-auto flex flex-col items-center gap-3 pr-2 menu-scroll-container">
+                        <button v-for="tab in menuTabs" :key="tab.id" @click="openView(tab.id)" class="w-14 h-14 rounded-full bg-cyan-400 text-black flex items-center justify-center shadow-lg hover:bg-cyan-300 transition-transform hover:scale-110 flex-shrink-0" :title="tab.name">
+                            <i :class="['fa-solid', tab.icon, 'text-2xl']"></i>
+                        </button>
+                    </div>
                 </div>
             </transition>
             <button @click="toggleMenu" class="w-16 h-16 rounded-full bg-fuchsia-500 text-white flex items-center justify-center shadow-lg hover:bg-fuchsia-400 transition-transform" :class="isMenuOpen ? 'rotate-45' : ''">
