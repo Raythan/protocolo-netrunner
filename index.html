@@ -108,6 +108,7 @@
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-1 font-pixel text-xs sm:text-sm">
                     <p class="text-yellow-400" title="DataCreds"><i class="fas fa-coins"></i> {{ formatNumber(gameState.creds) }}</p>
                     <p class="text-fuchsia-400" title="Reputação"><i class="fas fa-star"></i> {{ formatNumber(gameState.rep) }}</p>
+                    <p class="text-pink-400" title="Fragmentos de IA"><i class="fas fa-atom"></i> {{ formatNumber(gameState.prestigePoints) }}</p>
                     <div class="flex items-center gap-2 text-red-500" title="Nível de Rastreamento">
                         <i class="fas fa-user-secret"></i>
                         <span>{{ formatNumber(gameState.traceLevel) }} / {{ formatNumber(computedStats.maxTrace) }}</span>
@@ -364,6 +365,24 @@
                              </div>
                          </div>
                     </div>
+                    <!-- Prestígio -->
+                    <div v-if="activeView === 'prestige'">
+                        <div class="text-center mb-4">
+                            <p class="text-lg">Você possui <span class="font-pixel text-pink-400">{{ formatNumber(gameState.prestigePoints) }}</span> Fragmentos de IA.</p>
+                            <p class="text-sm text-gray-400">Use-os para comprar aprimoramentos permanentes que persistem após prestigiar.</p>
+                        </div>
+                        <div class="space-y-2">
+                            <div v-for="upgrade in prestigeUpgradeDetails" :key="upgrade.id" class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg">
+                                <div class="w-full sm:w-auto text-center sm:text-left">
+                                    <p class="font-bold"><i :class="['fa-solid', upgrade.icon, 'mr-2']"></i>{{ upgrade.name }} ({{ upgrade.level }}/{{ upgrade.maxLevel }})</p>
+                                    <p class="text-xs text-gray-400 mt-1">{{ upgrade.description }}</p>
+                                </div>
+                                <button @click="buyPrestigeUpgrade(upgrade.id)" :disabled="!upgrade.canBuy" class="w-full sm:w-auto mt-2 sm:mt-0 font-pixel text-sm py-2 px-4 rounded-md bg-pink-500 text-white hover:bg-pink-400 transition disabled:bg-gray-700 disabled:cursor-not-allowed">
+                                    {{ upgrade.isMaxed ? 'MÁX' : `Custo: ${upgrade.upgradeCost}` }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     <!-- Conquistas -->
                     <div v-if="activeView === 'achievements'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div v-for="achievement in achievementsData" :key="achievement.id" class="bg-gray-800 p-3 rounded-lg flex items-center gap-4" :class="{'opacity-50': !isAchievementCompleted(achievement.id)}">
@@ -509,6 +528,13 @@
                     ]
                 };
                 
+                const prestigeUpgradesData = [
+                    { id: 'prestige_rep', name: 'Memória Persistente', icon: 'fa-star', description: 'Aumenta permanentemente o ganho de REP em 10% por nível.', maxLevel: 10, cost: 1 },
+                    { id: 'prestige_creds', name: 'Algoritmos Otimizados', icon: 'fa-coins', description: 'Aumenta permanentemente o ganho de Creds em 10% por nível.', maxLevel: 10, cost: 1 },
+                    { id: 'prestige_slots', name: 'Compressão de Dados', icon: 'fa-box-archive', description: 'Comece cada nova execução com +5 slots de inventário por nível.', maxLevel: 4, cost: 2 },
+                    { id: 'prestige_skill_points', name: 'Conhecimento Residual', icon: 'fa-brain', description: 'Comece cada nova execução com +1 Ponto de Habilidade por nível.', maxLevel: 3, cost: 5 }
+                ];
+
                 const achievementsData = [ 
                     { id: 'ach1', name: 'Netrunner Iniciante', description: 'Execute 100 ciclos de invasão', type: 'clicks', target: 100, bonus: { stat: 'globalMultiplier', value: 0.01, description: '+1% Creds' } }, 
                     { id: 'ach2', name: 'Mercenário Digital', description: 'Alcance o nível 10', type: 'level', target: 10, bonus: { stat: 'repMultiplier', value: 0.02, description: '+2% REP' } }, 
@@ -536,7 +562,7 @@
 
                 // --- GAME STATE (Reactive) ---
                 const defaultGameState = () => ({
-                    version: 8,
+                    version: 9,
                     level: 1, rep: 0, repToNextLevel: 100, creds: 0, skillPoints: 0, prestigePoints: 0,
                     traceLevel: 0,
                     lastSaveTimestamp: dayjs().valueOf(),
@@ -546,6 +572,7 @@
                     inventorySlotUpgrades: 0,
                     agents: {},
                     skills: { passive: {}, active: {} },
+                    prestigeUpgrades: {},
                     activeEffects: {},
                     skillCooldowns: {},
                     stats: { totalClicks: 0, totalCreds: 0, systemsHacked: {}, prestigeCount: 0 },
@@ -591,6 +618,7 @@
                     scripts: { name: 'Scripts', icon: 'fa-scroll' },
                     training: { name: 'Treinamento', icon: 'fa-dumbbell' },
                     skills: { name: 'Habilidades', icon: 'fa-brain' },
+                    prestige: { name: 'Prestígio', icon: 'fa-atom' },
                     achievements: { name: 'Conquistas', icon: 'fa-trophy' },
                     system: { name: 'Sistema', icon: 'fa-cogs' },
                     systemSelection: { name: 'Seleção de Alvo', icon: 'fa-crosshairs' }
@@ -641,7 +669,10 @@
                     return bonuses;
                 });
 
-                const totalInventorySlots = computed(() => 20 + gameState.inventorySlotUpgrades * 5);
+                const totalInventorySlots = computed(() => {
+                    const prestigeSlotBonus = (gameState.prestigeUpgrades.prestige_slots || 0) * 5;
+                    return 20 + gameState.inventorySlotUpgrades * 5 + prestigeSlotBonus;
+                });
                 const currentInventorySize = computed(() => Object.values(gameState.inventory).flat().length);
 
                 const computedStats = computed(() => {
@@ -697,13 +728,16 @@
                         eventBonus[activeEvent.value.effect.stat] = 1 + activeEvent.value.effect.value;
                     }
 
+                    const prestigeRepBonus = 1 + ((gameState.prestigeUpgrades.prestige_rep || 0) * 0.1);
+                    const prestigeCredsBonus = 1 + ((gameState.prestigeUpgrades.prestige_creds || 0) * 0.1);
+
                     return {
                         invasionPower: totalInvasionPower,
                         security: totalSecurity,
                         maxTrace: 100 + (base.ofuscacao - 1) * 20,
-                        credsPerSecond: totalCps * achBonus.globalMultiplier * passiveBonuses.cpsMultiplier * specialBonuses.cpsBonus,
-                        repMultiplier: passiveBonuses.repMultiplier * achBonus.repMultiplier * eventBonus.repMultiplier,
-                        credsMultiplier: eventBonus.credsMultiplier,
+                        credsPerSecond: totalCps * passiveBonuses.cpsMultiplier * specialBonuses.cpsBonus * prestigeCredsBonus * achBonus.globalMultiplier,
+                        repMultiplier: passiveBonuses.repMultiplier * achBonus.repMultiplier * eventBonus.repMultiplier * prestigeRepBonus,
+                        credsMultiplier: achBonus.globalMultiplier * eventBonus.credsMultiplier * prestigeCredsBonus,
                         critChance: 0.05 + (gameState.critChanceLevel - 1) * 0.005 + specialBonuses.critChanceBonus,
                         critMultiplier: 1.5 + (gameState.critMultiplierLevel - 1) * 0.1 + specialBonuses.critMultiplierBonus,
                         prestigeBonus,
@@ -813,6 +847,16 @@
                             nextBonus
                         };
                     }).filter(s => s !== null);
+                });
+                
+                const prestigeUpgradeDetails = computed(() => {
+                    return prestigeUpgradesData.map(upgrade => {
+                        const level = gameState.prestigeUpgrades[upgrade.id] || 0;
+                        const isMaxed = level >= upgrade.maxLevel;
+                        const upgradeCost = upgrade.cost * (level + 1);
+                        const canBuy = !isMaxed && gameState.prestigePoints >= upgradeCost;
+                        return { ...upgrade, level, isMaxed, canBuy, upgradeCost };
+                    });
                 });
 
                 // --- METHODS ---
@@ -951,7 +995,7 @@
                         const baseCreds = system.reward.creds[0] + Math.random() * (system.reward.creds[1] - system.reward.creds[0]);
 
                         const repGained = baseRep * playerStats.repMultiplier * playerStats.prestigeBonus * critMultiplier * comboMultiplier;
-                        let credsGained = baseCreds * playerStats.prestigeBonus * playerStats.credsMultiplier * critMultiplier * comboMultiplier;
+                        let credsGained = baseCreds * playerStats.credsMultiplier * playerStats.prestigeBonus * critMultiplier * comboMultiplier;
                         
                         gameState.rep += repGained;
                         addCreds(credsGained);
@@ -1221,6 +1265,14 @@
                         gameState.skills.active[skillId]++;
                     }
                 };
+                
+                const buyPrestigeUpgrade = (upgradeId) => {
+                    const upgradeDetails = prestigeUpgradeDetails.value.find(u => u.id === upgradeId);
+                    if (upgradeDetails && upgradeDetails.canBuy) {
+                        gameState.prestigePoints -= upgradeDetails.upgradeCost;
+                        gameState.prestigeUpgrades[upgradeId] = (gameState.prestigeUpgrades[upgradeId] || 0) + 1;
+                    }
+                };
 
                 const activateSkill = (id) => {
                     const skill = skillsData.active.find(s => s.id === id);
@@ -1316,7 +1368,7 @@
                     setTimeout(() => { toast.show = false; }, 3000);
                 };
 
-                const SAVE_KEY = 'cyberpunkNetrunnerSave_v8';
+                const SAVE_KEY = 'cyberpunkNetrunnerSave_v9';
                 const saveGame = (manual = false) => {
                     gameState.lastSaveTimestamp = dayjs().valueOf();
                     localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
@@ -1329,7 +1381,7 @@
                         try {
                             const loadedState = JSON.parse(savedData);
                             
-                            if (!loadedState.version || loadedState.version < 8) {
+                            if (!loadedState.version || loadedState.version < 9) {
                                 console.warn("Save file from an older version detected. Resetting for compatibility.");
                                 resetGame();
                                 return;
@@ -1381,11 +1433,15 @@
                     const pointsGained = prestigePointsToGain.value;
                     const completedAchievements = [...gameState.completedAchievementIds];
                     const currentPrestigeCount = gameState.stats.prestigeCount || 0;
+                    const currentPrestigeUpgrades = { ...gameState.prestigeUpgrades };
 
                     const newState = defaultGameState();
                     newState.prestigePoints = currentPrestige + pointsGained;
                     newState.completedAchievementIds = completedAchievements;
                     newState.stats.prestigeCount = currentPrestigeCount + 1;
+                    newState.prestigeUpgrades = currentPrestigeUpgrades;
+                    
+                    newState.skillPoints = (currentPrestigeUpgrades.prestige_skill_points || 0);
 
                     Object.assign(gameState, newState);
                     gameState.traceLevel = 0;
@@ -1456,7 +1512,7 @@
 
                 return {
                     // State
-                    gameState, hardwareData, agentsData, skillsData, achievementsData,
+                    gameState, hardwareData, agentsData, skillsData, achievementsData, prestigeUpgradesData,
                     activeView, isMenuOpen, menuTabs, floatingTexts, actionPanelRef, toast,
                     showOfflineModal, offlineGains,
                     showConfirmModal, confirmTitle, confirmMessage,
@@ -1475,10 +1531,11 @@
                     otherUpgrades,
                     activeSkillDetails,
                     totalInventorySlots, currentInventorySize,
+                    prestigeUpgradeDetails,
                     // Methods
                     formatNumber, getItem, getAgentCost, getTrainCost, getAttributePurchaseAmount,
                     manualClick, equipItem, sellItem, sellAllUnequipped, setSort,
-                    buyAgent, trainAttribute, setPurchaseAmount, buySkill, activateSkill, upgradeActiveSkill,
+                    buyAgent, trainAttribute, setPurchaseAmount, buySkill, activateSkill, upgradeActiveSkill, buyPrestigeUpgrade,
                     saveGame, resetGame, prestigeReset, selectSystem,
                     askForConfirmation, handleConfirm, cancelConfirm,
                     toggleMenu, openView, closeView, upgradeHackSpeed, upgradeCritChance, upgradeCritMultiplier, upgradeComboDuration,
