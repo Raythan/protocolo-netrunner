@@ -109,6 +109,7 @@
                     <p class="text-yellow-400" title="DataCreds"><i class="fas fa-coins"></i> {{ formatNumber(gameState.creds) }}</p>
                     <p class="text-fuchsia-400" title="Reputação"><i class="fas fa-star"></i> {{ formatNumber(gameState.rep) }}</p>
                     <p class="text-pink-400" title="Fragmentos de IA"><i class="fas fa-atom"></i> {{ formatNumber(gameState.prestigePoints) }}</p>
+                    <p class="text-gray-400" title="Componentes"><i class="fas fa-gear"></i> {{ formatNumber(gameState.components) }}</p>
                     <div class="flex items-center gap-2 text-red-500" title="Nível de Rastreamento">
                         <i class="fas fa-user-secret"></i>
                         <span>{{ formatNumber(gameState.traceLevel) }} / {{ formatNumber(computedStats.maxTrace) }}</span>
@@ -239,35 +240,74 @@
                     </div>
                     <!-- Hardware -->
                     <div v-if="activeView === 'hardware'">
-                        <div class="text-center font-pixel text-lg mb-4 p-2 bg-gray-900 rounded-lg">
-                            Slots: <span :class="currentInventorySize >= totalInventorySlots ? 'text-red-500' : 'text-cyan-400'">{{ currentInventorySize }} / {{ totalInventorySlots }}</span>
+                        <div class="flex border-b border-gray-700 mb-4">
+                            <button @click="hardwareViewTab = 'inventory'" class="font-pixel py-2 px-4" :class="hardwareViewTab === 'inventory' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-500'">Inventário</button>
+                            <button @click="hardwareViewTab = 'crafting'" class="font-pixel py-2 px-4" :class="hardwareViewTab === 'crafting' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-500'">Oficina</button>
                         </div>
-                        <div v-for="(items, type) in sortedInventory" :key="type" class="mb-6">
-                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 gap-y-2">
-                                <h3 class="font-pixel text-cyan-400 capitalize">{{ {deck: 'Decks de Invasão', software: 'Softwares', implante: 'Implantes'}[type] || type }}</h3>
-                                <div class="flex flex-wrap gap-2 items-center">
-                                     <button @click="askForConfirmation('Vender Tudo', `Vender todos os itens de ${type} não equipados?`, () => sellAllUnequipped(type))" class="font-pixel text-xs py-1 px-2 rounded-md bg-red-800 text-white hover:bg-red-700 transition">Vender Todos</button>
-                                    <div class="text-xs font-pixel">Ordenar:</div>
-                                    <button @click="setSort(type, 'rarity')" class="font-pixel text-xs py-1 px-2 rounded-md" :class="inventorySort[type] === 'rarity' ? 'bg-cyan-500 text-black' : 'bg-gray-600'">Raridade</button>
-                                    <button @click="setSort(type, 'power')" class="font-pixel text-xs py-1 px-2 rounded-md" :class="inventorySort[type] === 'power' ? 'bg-cyan-500 text-black' : 'bg-gray-600'">Poder</button>
+
+                        <!-- Aba de Inventário -->
+                        <div v-if="hardwareViewTab === 'inventory'">
+                            <div class="text-center font-pixel text-lg mb-4 p-2 bg-gray-900 rounded-lg">
+                                Slots: <span :class="currentInventorySize >= totalInventorySlots ? 'text-red-500' : 'text-cyan-400'">{{ currentInventorySize }} / {{ totalInventorySlots }}</span>
+                            </div>
+                            <div v-for="(items, type) in sortedInventory" :key="type" class="mb-6">
+                                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 gap-y-2">
+                                    <h3 class="font-pixel text-cyan-400 capitalize">{{ {deck: 'Decks de Invasão', software: 'Softwares', implante: 'Implantes'}[type] || type }}</h3>
+                                    <div class="flex flex-wrap gap-2 items-center">
+                                        <button @click="askForConfirmation('Vender Tudo', `Vender todos os itens de ${type} não equipados?`, () => sellAllUnequipped(type))" class="font-pixel text-xs py-1 px-2 rounded-md bg-red-800 text-white hover:bg-red-700 transition">Vender Todos</button>
+                                        <div class="text-xs font-pixel">Ordenar:</div>
+                                        <button @click="setSort(type, 'rarity')" class="font-pixel text-xs py-1 px-2 rounded-md" :class="inventorySort[type] === 'rarity' ? 'bg-cyan-500 text-black' : 'bg-gray-600'">Raridade</button>
+                                        <button @click="setSort(type, 'power')" class="font-pixel text-xs py-1 px-2 rounded-md" :class="inventorySort[type] === 'power' ? 'bg-cyan-500 text-black' : 'bg-gray-600'">Poder</button>
+                                    </div>
+                                </div>
+                                <div class="space-y-2 mt-2">
+                                    <div v-if="!items.length" class="text-center text-gray-500 p-4 bg-gray-800 rounded-lg">Inventário Vazio</div>
+                                    <div v-for="item in items" :key="item.uniqueId" 
+                                        class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg border-l-4 transition-all" 
+                                        :class="{ 'equipped-highlight': gameState.equipment[type] === item.uniqueId }"
+                                        :style="{borderLeftColor: item.rarityColor}">
+                                        <div class="w-full sm:w-auto text-center sm:text-left">
+                                            <p class="font-bold" :style="{color: item.rarityColor}"><i :class="['fa-solid', item.icon, 'mr-2']"></i>{{ item.name }}</p>
+                                            <p class="text-sm text-gray-400">+{{ formatNumber(item.bonus.value) }} {{ {processamento: 'Processamento', ofuscacao: 'Ofuscação', agilidade: 'Agilidade'}[item.bonus.stat] || item.bonus.stat }}</p>
+                                            <p v-if="item.specialEffect" class="text-xs text-cyan-400 mt-1"><i class="fa-solid fa-star-of-life mr-1"></i>{{ item.specialEffect.description }}</p>
+                                        </div>
+                                        <div class="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                                            <button @click="sellItem(type, item.uniqueId)" :disabled="gameState.equipment[type] === item.uniqueId" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-red-600 text-white hover:bg-red-500 transition disabled:bg-gray-700 disabled:cursor-not-allowed">Vender</button>
+                                            <button v-if="gameState.equipment[type] === item.uniqueId" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-gray-600" disabled>Instalado</button>
+                                            <button v-else @click="equipItem(type, item.uniqueId)" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-yellow-500 text-black hover:bg-yellow-400 transition">Instalar</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="space-y-2 mt-2">
-                                <div v-if="!items.length" class="text-center text-gray-500 p-4 bg-gray-800 rounded-lg">Inventário Vazio</div>
-                                <div v-for="item in items" :key="item.uniqueId" 
-                                     class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg border-l-4 transition-all" 
-                                     :class="{ 'equipped-highlight': gameState.equipment[type] === item.uniqueId }"
-                                     :style="{borderLeftColor: item.rarityColor}">
-                                    <div class="w-full sm:w-auto text-center sm:text-left">
+                        </div>
+
+                        <!-- Aba de Oficina (Crafting) -->
+                        <div v-if="hardwareViewTab === 'crafting'">
+                            <div class="text-center font-pixel text-lg mb-4 p-2 bg-gray-900 rounded-lg">
+                                Componentes: <span class="text-cyan-400">{{ formatNumber(gameState.components) }}</span>
+                            </div>
+                            
+                            <h3 class="font-pixel text-cyan-400 mb-3">Fabricar Hardware</h3>
+                            <div class="space-y-2 mb-6">
+                                <div v-for="recipe in craftingRecipes" :key="recipe.id" class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg">
+                                    <div class="text-center sm:text-left">
+                                        <p class="font-bold" :style="{color: rarities[recipe.rarity].color}">{{ recipe.name }}</p>
+                                        <p class="text-xs text-gray-400">Custo: {{ formatNumber(recipe.cost.components) }} <i class="fas fa-gear"></i>, {{ formatNumber(recipe.cost.creds) }} <i class="fas fa-coins"></i></p>
+                                    </div>
+                                    <button @click="craftItem(recipe.id)" :disabled="!canCraft(recipe.id)" class="w-full sm:w-auto mt-2 sm:mt-0 font-pixel text-sm py-2 px-4 rounded-md bg-green-500 text-black hover:bg-green-400 transition disabled:bg-gray-700 disabled:cursor-not-allowed">Fabricar</button>
+                                </div>
+                            </div>
+
+                            <h3 class="font-pixel text-cyan-400 mb-3">Desmontar Hardware</h3>
+                            <button @click="dismantleAllCommons" class="w-full font-pixel text-sm py-2 px-4 rounded-md bg-red-800 text-white hover:bg-red-700 transition mb-4">Desmontar Todos os Comuns</button>
+                            <div class="space-y-2">
+                                <div v-if="dismantleList.length === 0" class="text-center text-gray-500 p-4 bg-gray-800 rounded-lg">Nenhum item para desmontar</div>
+                                <div v-for="item in dismantleList" :key="item.uniqueId" class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg">
+                                     <div class="w-full sm:w-auto text-center sm:text-left">
                                         <p class="font-bold" :style="{color: item.rarityColor}"><i :class="['fa-solid', item.icon, 'mr-2']"></i>{{ item.name }}</p>
                                         <p class="text-sm text-gray-400">+{{ formatNumber(item.bonus.value) }} {{ {processamento: 'Processamento', ofuscacao: 'Ofuscação', agilidade: 'Agilidade'}[item.bonus.stat] || item.bonus.stat }}</p>
-                                        <p v-if="item.specialEffect" class="text-xs text-cyan-400 mt-1"><i class="fa-solid fa-star-of-life mr-1"></i>{{ item.specialEffect.description }}</p>
                                     </div>
-                                    <div class="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                                        <button @click="sellItem(type, item.uniqueId)" :disabled="gameState.equipment[type] === item.uniqueId" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-red-600 text-white hover:bg-red-500 transition disabled:bg-gray-700 disabled:cursor-not-allowed">Vender</button>
-                                        <button v-if="gameState.equipment[type] === item.uniqueId" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-gray-600" disabled>Instalado</button>
-                                        <button v-else @click="equipItem(type, item.uniqueId)" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-yellow-500 text-black hover:bg-yellow-400 transition">Instalar</button>
-                                    </div>
+                                    <button @click="dismantleItem(item.type, item.uniqueId)" class="w-full sm:w-auto mt-2 sm:mt-0 font-pixel text-xs py-2 px-3 rounded-md bg-red-600 text-white hover:bg-red-500 transition">Desmontar (+{{ getDismantleValue(item.rarity) }})</button>
                                 </div>
                             </div>
                         </div>
@@ -570,6 +610,7 @@
                     equipment: { deck: null, software: null, implante: null },
                     inventory: { deck: [], software: [], implante: [] },
                     inventorySlotUpgrades: 0,
+                    components: 0,
                     agents: {},
                     skills: { passive: {}, active: {} },
                     prestigeUpgrades: {},
@@ -610,6 +651,7 @@
                 const playerDisconnectedTimer = ref(0);
                 const inventorySort = reactive({ deck: 'rarity', software: 'rarity', implante: 'rarity' });
                 const purchaseAmount = ref(1);
+                const hardwareViewTab = ref('inventory');
                 
                 // --- COMPUTED PROPERTIES ---
                 const viewData = {
@@ -858,6 +900,24 @@
                         return { ...upgrade, level, isMaxed, canBuy, upgradeCost };
                     });
                 });
+                
+                const craftingRecipes = reactive([
+                    { id: 'craft_incomum', name: 'Hardware Incomum Aleatório', rarity: 'incomum', cost: { components: 50, creds: 10000 } },
+                    { id: 'craft_raro', name: 'Hardware Raro Aleatório', rarity: 'raro', cost: { components: 250, creds: 50000 } },
+                    { id: 'craft_lendario', name: 'Hardware Lendário Aleatório', rarity: 'lendario', cost: { components: 1000, creds: 250000 } }
+                ]);
+
+                const dismantleList = computed(() => {
+                    const list = [];
+                    for (const type in gameState.inventory) {
+                        gameState.inventory[type].forEach(item => {
+                            if (item.uniqueId !== gameState.equipment[type]) {
+                                list.push({ ...item, type });
+                            }
+                        });
+                    }
+                    return list;
+                });
 
                 // --- METHODS ---
                 const toggleMenu = () => isMenuOpen.value = !isMenuOpen.value;
@@ -1040,29 +1100,35 @@
                     checkAchievements();
                 };
 
-                const generateLoot = (system) => {
+                const generateLoot = (system, fixedRarity = null) => {
                     if (currentInventorySize.value >= totalInventorySlots.value) {
-                        const rect = actionPanelRef.value.getBoundingClientRect();
-                        const position = { x: rect.width / 2, y: rect.height / 2 + 30 };
-                        showFloatingText('Inventário Cheio!', 'var(--trace-color)', position, 'fa-box');
-                        return;
+                        if (!fixedRarity) { // Only show message for natural drops
+                            const rect = actionPanelRef.value.getBoundingClientRect();
+                            const position = { x: rect.width / 2, y: rect.height / 2 + 30 };
+                            showFloatingText('Inventário Cheio!', 'var(--trace-color)', position, 'fa-box');
+                        }
+                        return false; // Indicate failure
                     }
 
-                    const finalDropChance = system.loot.dropChance + (computedStats.value.lootChanceBonus || 0);
-                    if (!system.loot || Math.random() > finalDropChance) return;
+                    if (!fixedRarity) {
+                        const finalDropChance = system.loot.dropChance + (computedStats.value.lootChanceBonus || 0);
+                        if (!system.loot || Math.random() > finalDropChance) return false;
+                    }
                     
-                    const availableRarities = Object.entries(rarities).filter(([key, rarity]) => gameState.level >= rarity.minLevel);
-                    if (availableRarities.length === 0) return;
+                    let chosenRarityKey = fixedRarity;
+                    if (!chosenRarityKey) {
+                        const availableRarities = Object.entries(rarities).filter(([key, rarity]) => gameState.level >= rarity.minLevel);
+                        if (availableRarities.length === 0) return false;
 
-                    const totalWeight = availableRarities.reduce((sum, [key, rarity]) => sum + rarity.weight, 0);
-                    let random = Math.random() * totalWeight;
-                    let chosenRarityKey;
+                        const totalWeight = availableRarities.reduce((sum, [key, rarity]) => sum + rarity.weight, 0);
+                        let random = Math.random() * totalWeight;
 
-                    for (const [key, rarity] of availableRarities) {
-                        random -= rarity.weight;
-                        if (random <= 0) {
-                            chosenRarityKey = key;
-                            break;
+                        for (const [key, rarity] of availableRarities) {
+                            random -= rarity.weight;
+                            if (random <= 0) {
+                                chosenRarityKey = key;
+                                break;
+                            }
                         }
                     }
                     
@@ -1101,9 +1167,12 @@
                     if (!gameState.inventory[itemType]) gameState.inventory[itemType] = [];
                     gameState.inventory[itemType].push(newItem);
 
-                    const rect = actionPanelRef.value.getBoundingClientRect();
-                    const position = { x: rect.width / 2, y: rect.height / 2 + 30 };
-                    showFloatingText(`Hardware!`, rarity.color, position, 'fa-box-open');
+                    if (!fixedRarity) {
+                       const rect = actionPanelRef.value.getBoundingClientRect();
+                       const position = { x: rect.width / 2, y: rect.height / 2 + 30 };
+                       showFloatingText(`Hardware!`, rarity.color, position, 'fa-box-open');
+                    }
+                    return true;
                 };
                 
                 const addCreds = (amount) => {
@@ -1465,6 +1534,63 @@
                     }
                 };
 
+                const canCraft = (recipeId) => {
+                    const recipe = craftingRecipes.find(r => r.id === recipeId);
+                    if (!recipe) return false;
+                    return gameState.components >= recipe.cost.components && gameState.creds >= recipe.cost.creds && currentInventorySize.value < totalInventorySlots.value;
+                };
+
+                const craftItem = (recipeId) => {
+                    if (!canCraft(recipeId)) return;
+                    const recipe = craftingRecipes.find(r => r.id === recipeId);
+                    
+                    gameState.components -= recipe.cost.components;
+                    gameState.creds -= recipe.cost.creds;
+
+                    const success = generateLoot(currentTargetSystem.value, recipe.rarity);
+                    if (!success) { // Should not happen due to canCraft check, but as a fallback
+                        gameState.components += recipe.cost.components;
+                        gameState.creds += recipe.cost.creds;
+                        showToast("Falha na fabricação! Inventário cheio.", "fa-times-circle", "var(--trace-color)");
+                    } else {
+                        showToast("Hardware fabricado!", "fa-hammer", "var(--skill-color)");
+                    }
+                };
+
+                const getDismantleValue = (rarity) => {
+                    switch(rarity) {
+                        case 'incomum': return 5;
+                        case 'raro': return 25;
+                        case 'lendario': return 100;
+                        default: return 1;
+                    }
+                };
+
+                const dismantleItem = (type, uniqueId) => {
+                    const itemIndex = gameState.inventory[type].findIndex(i => i.uniqueId === uniqueId);
+                    if (itemIndex === -1 || gameState.equipment[type] === uniqueId) return;
+
+                    const item = gameState.inventory[type][itemIndex];
+                    const value = getDismantleValue(item.rarity);
+                    gameState.components += value;
+                    gameState.inventory[type].splice(itemIndex, 1);
+                };
+
+                const dismantleAllCommons = () => {
+                    let componentsGained = 0;
+                    for (const type in gameState.inventory) {
+                        const commons = gameState.inventory[type].filter(item => item.rarity === 'comum' && item.uniqueId !== gameState.equipment[type]);
+                        componentsGained += commons.length * getDismantleValue('comum');
+                        gameState.inventory[type] = gameState.inventory[type].filter(item => item.rarity !== 'comum' || item.uniqueId === gameState.equipment[type]);
+                    }
+                    if (componentsGained > 0) {
+                        gameState.components += componentsGained;
+                        showToast(`+${componentsGained} Componentes`, 'fa-gear', 'var(--highlight-color)');
+                    } else {
+                        showToast("Nenhum item comum para desmontar.", "fa-info-circle", "#f0a04a");
+                    }
+                };
+
                 let gameLoopInterval, saveInterval, cooldownInterval, eventInterval;
 
                 onMounted(() => {
@@ -1519,6 +1645,7 @@
                     hackProgress, isPlayerDisconnected, playerDisconnectedTimer,
                     activeEvent, activeEventTimer,
                     inventorySort, purchaseAmount,
+                    hardwareViewTab,
                     // Computed
                     computedStats, currentTargetSystem, prestigePointsToGain, activeSkills,
                     skillTree,
@@ -1532,6 +1659,8 @@
                     activeSkillDetails,
                     totalInventorySlots, currentInventorySize,
                     prestigeUpgradeDetails,
+                    craftingRecipes,
+                    dismantleList,
                     // Methods
                     formatNumber, getItem, getAgentCost, getTrainCost, getAttributePurchaseAmount,
                     manualClick, equipItem, sellItem, sellAllUnequipped, setSort,
@@ -1541,8 +1670,10 @@
                     toggleMenu, openView, closeView, upgradeHackSpeed, upgradeCritChance, upgradeCritMultiplier, upgradeComboDuration,
                     upgradeInventorySlots,
                     getAchievementProgress,
+                    craftItem, canCraft, dismantleItem, getDismantleValue, dismantleAllCommons,
                     PRESTIGE_LEVEL_REQ,
-                    systemData
+                    systemData,
+                    rarities
                 };
             }
         }
