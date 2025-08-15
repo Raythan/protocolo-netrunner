@@ -238,6 +238,9 @@
                     </div>
                     <!-- Hardware -->
                     <div v-if="activeView === 'hardware'">
+                        <div class="text-center font-pixel text-lg mb-4 p-2 bg-gray-900 rounded-lg">
+                            Slots: <span :class="currentInventorySize >= totalInventorySlots ? 'text-red-500' : 'text-cyan-400'">{{ currentInventorySize }} / {{ totalInventorySlots }}</span>
+                        </div>
                         <div v-for="(items, type) in sortedInventory" :key="type" class="mb-6">
                             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 gap-y-2">
                                 <h3 class="font-pixel text-cyan-400 capitalize">{{ {deck: 'Decks de Invasão', software: 'Softwares', implante: 'Implantes'}[type] || type }}</h3>
@@ -309,6 +312,16 @@
                                 <p class="text-sm text-gray-400">{{ upgrade.currentLevel }} <span class="text-green-400">({{ upgrade.nextLevel }})</span></p>
                             </div>
                             <button @click="upgrade.action" :disabled="gameState.creds < upgrade.cost" class="w-full sm:w-auto font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(upgrade.cost) }} Creds</button>
+                        </div>
+                        
+                        <hr class="border-gray-700 my-4">
+                        
+                        <div class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg gap-2">
+                            <div class="text-center sm:text-left">
+                                <p class="font-bold capitalize">Expandir Slots de Inventário</p>
+                                <p class="text-sm text-gray-400">Slots: {{ totalInventorySlots }} <span class="text-green-400">(Próximo: +5)</span></p>
+                            </div>
+                            <button @click="upgradeInventorySlots" :disabled="gameState.creds < getInventorySlotUpgradeCost" class="w-full sm:w-auto font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">{{ formatNumber(getInventorySlotUpgradeCost) }} Creds</button>
                         </div>
                     </div>
                     <!-- Habilidades -->
@@ -530,6 +543,7 @@
                     attributes: { processamento: 1, agilidade: 1, ofuscacao: 1 },
                     equipment: { deck: null, software: null, implante: null },
                     inventory: { deck: [], software: [], implante: [] },
+                    inventorySlotUpgrades: 0,
                     agents: {},
                     skills: { passive: {}, active: {} },
                     activeEffects: {},
@@ -612,6 +626,9 @@
                     const level = Number(gameState.comboDurationLevel) || 1;
                     return Math.floor(200 * Math.pow(1.6, level));
                 });
+                 const getInventorySlotUpgradeCost = computed(() => {
+                    return Math.floor(5000 * Math.pow(2, gameState.inventorySlotUpgrades));
+                });
 
                 const achievementBonus = computed(() => {
                     const bonuses = { globalMultiplier: 1, repMultiplier: 1, invasionPowerMultiplier: 1, lootChanceBonus: 0 };
@@ -623,6 +640,9 @@
                     });
                     return bonuses;
                 });
+
+                const totalInventorySlots = computed(() => 20 + gameState.inventorySlotUpgrades * 5);
+                const currentInventorySize = computed(() => Object.values(gameState.inventory).flat().length);
 
                 const computedStats = computed(() => {
                     const base = gameState.attributes;
@@ -880,7 +900,7 @@
                         targetIcon.classList.add('target-hit-animation');
                         setTimeout(() => targetIcon.classList.remove('target-hit-animation'), 200);
                     }
-
+                    
                     const now = Date.now();
                     if (now - gameState.lastClickTimestamp < 2000) {
                         gameState.comboCount = Math.min(10, gameState.comboCount + 1);
@@ -973,11 +993,17 @@
                         }
                     }
                     hackProgress.value = 0;
-                    if (!gameState.comboBonusActive) gameState.comboCount = 0;
                     checkAchievements();
                 };
 
                 const generateLoot = (system) => {
+                    if (currentInventorySize.value >= totalInventorySlots.value) {
+                        const rect = actionPanelRef.value.getBoundingClientRect();
+                        const position = { x: rect.width / 2, y: rect.height / 2 + 30 };
+                        showFloatingText('Inventário Cheio!', 'var(--trace-color)', position, 'fa-box');
+                        return;
+                    }
+
                     const finalDropChance = system.loot.dropChance + (computedStats.value.lootChanceBonus || 0);
                     if (!system.loot || Math.random() > finalDropChance) return;
                     
@@ -1161,6 +1187,14 @@
                     if (gameState.creds >= cost) {
                         gameState.creds -= cost;
                         gameState.comboDurationLevel++;
+                    }
+                };
+
+                const upgradeInventorySlots = () => {
+                    const cost = getInventorySlotUpgradeCost.value;
+                    if (gameState.creds >= cost) {
+                        gameState.creds -= cost;
+                        gameState.inventorySlotUpgrades++;
                     }
                 };
                 
@@ -1387,6 +1421,7 @@
                         if (Date.now() - gameState.lastClickTimestamp > 2000) {
                             gameState.comboCount = 0;
                         }
+
                         hackProgress.value += (100 / (5000 / GAME_TICK_RATE)) * computedStats.value.hackSpeed;
                         if (hackProgress.value >= 100) {
                             resolveHack();
@@ -1436,8 +1471,10 @@
                     availableSystems,
                     currentViewName, currentViewIcon,
                     getHackSpeedUpgradeCost, getCritChanceUpgradeCost, getCritMultiplierUpgradeCost, getComboDurationUpgradeCost,
+                    getInventorySlotUpgradeCost,
                     otherUpgrades,
                     activeSkillDetails,
+                    totalInventorySlots, currentInventorySize,
                     // Methods
                     formatNumber, getItem, getAgentCost, getTrainCost, getAttributePurchaseAmount,
                     manualClick, equipItem, sellItem, sellAllUnequipped, setSort,
@@ -1445,6 +1482,7 @@
                     saveGame, resetGame, prestigeReset, selectSystem,
                     askForConfirmation, handleConfirm, cancelConfirm,
                     toggleMenu, openView, closeView, upgradeHackSpeed, upgradeCritChance, upgradeCritMultiplier, upgradeComboDuration,
+                    upgradeInventorySlots,
                     getAchievementProgress,
                     PRESTIGE_LEVEL_REQ,
                     systemData
