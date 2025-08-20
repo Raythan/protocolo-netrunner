@@ -464,7 +464,7 @@
                 </div>
             </div>
         </div>
-        <div v-if="toast.show" class="toast fixed top-5 left-1/2 -translate-x-1/2 bg-cyan-500 text-black font-pixel text-sm p-4 rounded-lg shadow-lg z-50" :style="{backgroundColor: toast.color || 'var(--highlight-color)'}">
+        <div v-if="toast.show" @click="dismissToast" class="toast fixed top-5 left-1/2 -translate-x-1/2 bg-cyan-500 text-black font-pixel text-sm p-4 rounded-lg shadow-lg z-50 cursor-pointer" :style="{backgroundColor: toast.color || 'var(--highlight-color)'}">
             <i :class="['fa-solid', toast.icon, 'mr-2']"></i>{{ toast.message }}
         </div>
     </div>
@@ -643,7 +643,7 @@
                 const isMenuOpen = ref(false);
                 const floatingTexts = ref([]);
                 const actionPanelRef = ref(null);
-                const toast = reactive({ show: false, message: '', icon: 'fa-save', color: 'var(--highlight-color)' });
+                const toast = reactive({ show: false, message: '', icon: 'fa-save', color: 'var(--highlight-color)', timeoutId: null });
                 const showOfflineModal = ref(false);
                 const offlineGains = ref(0);
                 const showConfirmModal = ref(false);
@@ -1397,12 +1397,28 @@
                     confirmCallback.value = null;
                 };
 
+                const dismissToast = () => {
+                    if (toast.timeoutId) {
+                        clearTimeout(toast.timeoutId);
+                        toast.timeoutId = null;
+                    }
+                    toast.show = false;
+                };
+
                 const showToast = (message, icon = 'fa-save', color = 'var(--highlight-color)') => {
-                    toast.message = message;
-                    toast.icon = icon;
-                    toast.color = color;
-                    toast.show = true;
-                    setTimeout(() => { toast.show = false; }, 3000);
+                    if (toast.show) {
+                        dismissToast();
+                    }
+                    // Using setTimeout to allow the animation to reset if a toast is triggered back-to-back
+                    setTimeout(() => {
+                        toast.message = message;
+                        toast.icon = icon;
+                        toast.color = color;
+                        toast.show = true;
+                        toast.timeoutId = setTimeout(() => {
+                            dismissToast();
+                        }, 3000);
+                    }, 50);
                 };
 
                 const SAVE_KEY = 'cyberpunkNetrunnerSave_v10';
@@ -1664,6 +1680,7 @@
                     getAchievementProgress,
                     craftItem, canCraft, getDismantleValue,
                     setAutoLootSetting, processAutoLoot,
+                    dismissToast,
                     PRESTIGE_LEVEL_REQ,
                     systemData,
                     rarities
