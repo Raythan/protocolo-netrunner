@@ -188,37 +188,37 @@
         </div>
 
         <!-- Painel de Visão em Tela Cheia -->
-        <div v-if="activeView" class="fixed inset-0 bg-[#0d0208]/95 backdrop-blur-sm z-50 flex flex-col p-4 animate__animated animate__fadeIn" @click.self="closeView">
+        <div v-if="activeView" class="fixed inset-0 bg-[#0d0208]/95 backdrop-blur-sm z-50 flex flex-col p-2 sm:p-4 animate__animated animate__fadeIn" @click.self="closeView">
             <div class="bg-[#1a1a1a] border border-gray-700 rounded-xl flex flex-col h-full max-h-full">
                 <!-- Cabeçalho da Visão -->
                 <div class="flex justify-between items-center p-4 border-b border-gray-700 flex-shrink-0">
-                    <h2 class="font-pixel text-xl text-cyan-400"><i :class="['fa-solid', currentViewIcon, 'mr-3']"></i>{{ currentViewName }}</h2>
+                    <h2 class="font-pixel text-lg sm:text-xl text-cyan-400"><i :class="['fa-solid', currentViewIcon, 'mr-3']"></i>{{ currentViewName }}</h2>
                     <button @click="closeView" class="text-gray-400 hover:text-white text-4xl leading-none transition">&times;</button>
                 </div>
                 <!-- Conteúdo Rolável -->
-                <div class="p-6 flex-grow overflow-y-auto fullscreen-content space-y-6">
+                <div class="p-3 sm:p-6 flex-grow overflow-y-auto fullscreen-content space-y-6">
                     <!-- Seleção de Sistema -->
                     <div v-if="activeView === 'systemSelection'">
-                        <div v-for="system in availableSystems" :key="system.id" class="flex items-center justify-between bg-gray-800 p-3 rounded-lg mb-2">
-                            <div>
+                        <div v-for="system in availableSystems" :key="system.id" class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg mb-2 gap-2">
+                            <div class="text-center sm:text-left">
                                 <p class="font-bold"><i :class="['fa-solid', system.icon, 'mr-2']" :style="{color: system.color}"></i>{{ system.name }}</p>
-                                <p class="text-sm text-gray-400">Processamento: {{ formatNumber(system.processingPower) }} | Criptografia: {{ formatNumber(system.encryption) }}</p>
+                                <p class="text-xs sm:text-sm text-gray-400">Proc: {{ formatNumber(system.processingPower) }} | Cript: {{ formatNumber(system.encryption) }}</p>
                             </div>
-                            <button @click="selectSystem(system.id)" :disabled="gameState.currentTargetSystemId === system.id" class="font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">
+                            <button @click="selectSystem(system.id)" :disabled="gameState.currentTargetSystemId === system.id" class="w-full sm:w-auto font-pixel text-sm py-2 px-4 rounded-md bg-cyan-400 text-black hover:bg-cyan-300 transition disabled:bg-gray-700 disabled:text-gray-400">
                                 {{ gameState.currentTargetSystemId === system.id ? 'Invadindo' : 'Invadir' }}
                             </button>
                         </div>
                     </div>
                     <!-- Netrunner -->
                     <div v-if="activeView === 'netrunner'">
-                         <div class="bg-[#1a1a1a] p-6 rounded-xl border border-gray-700 shadow-lg shadow-cyan-500/10">
+                         <div class="bg-[#1a1a1a] p-4 sm:p-6 rounded-xl border border-gray-700 shadow-lg shadow-cyan-500/10">
                             <div class="text-center mb-4">
-                                <h1 class="font-pixel text-2xl text-white">Netrunner</h1>
-                                <h2 class="font-pixel text-cyan-400">Nível {{ gameState.level }}</h2>
+                                <h1 class="font-pixel text-xl sm:text-2xl text-white">Netrunner</h1>
+                                <h2 class="font-pixel text-base sm:text-lg text-cyan-400">Nível {{ gameState.level }}</h2>
                             </div>
 
-                            <div class="flex justify-center gap-4 mb-4 p-2 bg-gray-800 rounded-lg">
-                                <div v-for="(itemId, type) in gameState.equipment" :key="type" class="w-16 h-16 bg-black/50 rounded-lg flex items-center justify-center text-4xl text-gray-500 border-2" :style="{borderColor: getItem(type, itemId)?.rarityColor || 'transparent'}" :title="getItem(type, itemId)?.name || 'Vazio'">
+                            <div class="flex justify-center gap-2 sm:gap-4 mb-4 p-2 bg-gray-800 rounded-lg">
+                                <div v-for="(itemId, type) in gameState.equipment" :key="type" class="w-14 h-14 sm:w-16 sm:h-16 bg-black/50 rounded-lg flex items-center justify-center text-3xl sm:text-4xl text-gray-500 border-2" :style="{borderColor: getItem(type, itemId)?.rarityColor || 'transparent'}" :title="getItem(type, itemId)?.name || 'Vazio'">
                                     <i v-if="getItem(type, itemId)" :class="['fa-solid', getItem(type, itemId).icon]" :style="{color: getItem(type, itemId).rarityColor}"></i>
                                     <i v-else class="fa-solid fa-question"></i>
                                 </div>
@@ -228,7 +228,7 @@
                                 <div class="bg-gray-800 rounded-full h-4 overflow-hidden">
                                     <div class="bg-fuchsia-500 h-4 transition-all duration-300" :style="{ width: `${(gameState.rep / gameState.repToNextLevel) * 100}%` }"></div>
                                 </div>
-                                <p class="text-center text-sm mt-1 text-gray-400">{{ formatNumber(gameState.rep) }} / {{ formatNumber(gameState.repToNextLevel) }} REP</p>
+                                <p class="text-center text-xs sm:text-sm mt-1 text-gray-400">{{ formatNumber(gameState.rep) }} / {{ formatNumber(gameState.repToNextLevel) }} REP</p>
                             </div>
 
                             <div v-for="(items, title) in { 'Atributos': gameState.attributes, 'Estatísticas': computedStats }" :key="title" class="mt-6">
@@ -236,7 +236,7 @@
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <div v-for="(value, key) in items" :key="key" class="bg-gray-800 p-2 rounded-lg text-center">
                                         <p class="text-xs capitalize text-gray-400">{{ {invasionPower: 'Poder de Invasão', security: 'Segurança', credsPerSecond: 'Creds / Seg', repMultiplier: 'Bônus de REP', critChance: 'Chance Crítica', critMultiplier: 'Multiplicador Crítico', prestigeBonus: 'Bônus de Prestígio', achievementBonus: 'Bônus de Conquista', maxTrace: 'Rastreamento Máx.', lootChanceBonus: 'Chance de Loot', traceResist: 'Resist. Rastreamento'}[key] || key.replace(/([A-Z])/g, ' $1') }}</p>
-                                        <p class="font-pixel text-lg" :class="{'text-pink-400': key === 'prestigeBonus', 'text-yellow-400': key === 'achievementBonus', 'text-cyan-400': !['prestigeBonus', 'achievementBonus'].includes(key)}">
+                                        <p class="font-pixel text-base sm:text-lg" :class="{'text-pink-400': key === 'prestigeBonus', 'text-yellow-400': key === 'achievementBonus', 'text-cyan-400': !['prestigeBonus', 'achievementBonus'].includes(key)}">
                                             {{ (key.includes('Bonus') || key.includes('Multiplier') || key.includes('critMultiplier') ? `+${formatNumber((value - 1) * 100, 2)}%` : (key.includes('Chance') ? `${formatNumber(value * 100, 2)}%` : (key === 'credsPerSecond' ? formatNumber(value, 2) : formatNumber(value)))) }}
                                         </p>
                                     </div>
@@ -247,8 +247,8 @@
                     <!-- Hardware -->
                     <div v-if="activeView === 'hardware'">
                         <div class="flex border-b border-gray-700 mb-4">
-                            <button @click="hardwareViewTab = 'inventory'" class="font-pixel py-2 px-4" :class="hardwareViewTab === 'inventory' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-500'">Inventário</button>
-                            <button @click="hardwareViewTab = 'crafting'" class="font-pixel py-2 px-4" :class="hardwareViewTab === 'crafting' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-500'">Oficina</button>
+                            <button @click="hardwareViewTab = 'inventory'" class="font-pixel py-2 px-4 text-sm" :class="hardwareViewTab === 'inventory' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-500'">Inventário</button>
+                            <button @click="hardwareViewTab = 'crafting'" class="font-pixel py-2 px-4 text-sm" :class="hardwareViewTab === 'crafting' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-500'">Oficina</button>
                         </div>
 
                         <!-- Aba de Inventário -->
@@ -296,7 +296,7 @@
                             <div class="space-y-2 mb-6">
                                 <div v-for="recipe in craftingRecipes" :key="recipe.id" class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg">
                                     <div class="text-center sm:text-left">
-                                        <p class="font-bold" :style="{color: rarities[recipe.rarity].color}">{{ recipe.name }}</p>
+                                        <p class="font-bold text-sm" :style="{color: rarities[recipe.rarity].color}">{{ recipe.name }}</p>
                                         <p class="text-xs text-gray-400">Custo: {{ formatNumber(recipe.cost.components) }} <i class="fas fa-gear"></i>, {{ formatNumber(recipe.cost.creds) }} <i class="fas fa-coins"></i></p>
                                     </div>
                                     <button @click="craftItem(recipe.id)" :disabled="!canCraft(recipe.id)" class="w-full sm:w-auto mt-2 sm:mt-0 font-pixel text-sm py-2 px-4 rounded-md bg-green-500 text-black hover:bg-green-400 transition disabled:bg-gray-700 disabled:cursor-not-allowed">Fabricar</button>
@@ -307,13 +307,13 @@
 
                             <!-- Gerenciamento Automático de Loot -->
                             <h3 class="font-pixel text-cyan-400 mb-3">Gerenciamento Automático de Loot</h3>
-                            <div class="space-y-2 mb-4 bg-gray-800 p-4 rounded-lg">
-                                <div v-for="(rarity, key) in rarities" :key="key" class="grid grid-cols-2 sm:grid-cols-4 items-center gap-2">
-                                    <p class="font-bold text-sm" :style="{color: rarity.color}">{{ rarity.name }}</p>
-                                    <div class="col-span-1 sm:col-span-3 flex gap-2">
-                                        <button @click="setAutoLootSetting(key, 'keep')" class="flex-1 font-pixel text-xs py-1 px-2 rounded-md" :class="gameState.autoLootSettings[key] === 'keep' ? 'bg-cyan-500 text-black' : 'bg-gray-600 text-white'">Manter</button>
-                                        <button @click="setAutoLootSetting(key, 'sell')" class="flex-1 font-pixel text-xs py-1 px-2 rounded-md" :class="gameState.autoLootSettings[key] === 'sell' ? 'bg-yellow-500 text-black' : 'bg-gray-600 text-white'">Vender</button>
-                                        <button @click="setAutoLootSetting(key, 'dismantle')" class="flex-1 font-pixel text-xs py-1 px-2 rounded-md" :class="gameState.autoLootSettings[key] === 'dismantle' ? 'bg-red-600 text-white' : 'bg-gray-600 text-white'">Desmontar</button>
+                            <div class="space-y-3 mb-4 bg-gray-800 p-4 rounded-lg">
+                                <div v-for="(rarity, key) in rarities" :key="key" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                    <p class="font-bold text-sm text-center sm:text-left w-full sm:w-1/4" :style="{color: rarity.color}">{{ rarity.name }}</p>
+                                    <div class="w-full sm:w-3/4 flex gap-2">
+                                        <button @click="setAutoLootSetting(key, 'keep')" class="flex-1 font-pixel text-xs py-2 px-1 rounded-md" :class="gameState.autoLootSettings[key] === 'keep' ? 'bg-cyan-500 text-black' : 'bg-gray-600 text-white'">Manter</button>
+                                        <button @click="setAutoLootSetting(key, 'sell')" class="flex-1 font-pixel text-xs py-2 px-1 rounded-md" :class="gameState.autoLootSettings[key] === 'sell' ? 'bg-yellow-500 text-black' : 'bg-gray-600 text-white'">Vender</button>
+                                        <button @click="setAutoLootSetting(key, 'dismantle')" class="flex-1 font-pixel text-xs py-2 px-1 rounded-md" :class="gameState.autoLootSettings[key] === 'dismantle' ? 'bg-red-600 text-white' : 'bg-gray-600 text-white'">Desmontar</button>
                                     </div>
                                 </div>
                             </div>
