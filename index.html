@@ -260,7 +260,6 @@
                                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 gap-y-2">
                                     <h3 class="font-pixel text-cyan-400 capitalize">{{ {deck: 'Decks de Invasão', software: 'Softwares', implante: 'Implantes'}[type] || type }}</h3>
                                     <div class="flex flex-wrap gap-2 items-center">
-                                        <button @click="askForConfirmation('Vender Tudo', `Vender todos os itens de ${type} não equipados?`, () => sellAllUnequipped(type))" class="font-pixel text-xs py-1 px-2 rounded-md bg-red-800 text-white hover:bg-red-700 transition">Vender Todos</button>
                                         <div class="text-xs font-pixel">Ordenar:</div>
                                         <button @click="setSort(type, 'rarity')" class="font-pixel text-xs py-1 px-2 rounded-md" :class="inventorySort[type] === 'rarity' ? 'bg-cyan-500 text-black' : 'bg-gray-600'">Raridade</button>
                                         <button @click="setSort(type, 'power')" class="font-pixel text-xs py-1 px-2 rounded-md" :class="inventorySort[type] === 'power' ? 'bg-cyan-500 text-black' : 'bg-gray-600'">Poder</button>
@@ -304,18 +303,21 @@
                                 </div>
                             </div>
 
-                            <h3 class="font-pixel text-cyan-400 mb-3">Desmontar Hardware</h3>
-                            <button @click="dismantleAllCommons" class="w-full font-pixel text-sm py-2 px-4 rounded-md bg-red-800 text-white hover:bg-red-700 transition mb-4">Desmontar Todos os Comuns</button>
-                            <div class="space-y-2">
-                                <div v-if="dismantleList.length === 0" class="text-center text-gray-500 p-4 bg-gray-800 rounded-lg">Nenhum item para desmontar</div>
-                                <div v-for="item in dismantleList" :key="item.uniqueId" class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg">
-                                     <div class="w-full sm:w-auto text-center sm:text-left">
-                                        <p class="font-bold" :style="{color: item.rarityColor}"><i :class="['fa-solid', item.icon, 'mr-2']"></i>{{ item.name }}</p>
-                                        <p class="text-sm text-gray-400">+{{ formatNumber(item.bonus.value) }} {{ {processamento: 'Processamento', ofuscacao: 'Ofuscação', agilidade: 'Agilidade'}[item.bonus.stat] || item.bonus.stat }}</p>
+                            <hr class="border-gray-700 my-6">
+
+                            <!-- Gerenciamento Automático de Loot -->
+                            <h3 class="font-pixel text-cyan-400 mb-3">Gerenciamento Automático de Loot</h3>
+                            <div class="space-y-2 mb-4 bg-gray-800 p-4 rounded-lg">
+                                <div v-for="(rarity, key) in rarities" :key="key" class="grid grid-cols-2 sm:grid-cols-4 items-center gap-2">
+                                    <p class="font-bold text-sm" :style="{color: rarity.color}">{{ rarity.name }}</p>
+                                    <div class="col-span-1 sm:col-span-3 flex gap-2">
+                                        <button @click="setAutoLootSetting(key, 'keep')" class="flex-1 font-pixel text-xs py-1 px-2 rounded-md" :class="gameState.autoLootSettings[key] === 'keep' ? 'bg-cyan-500 text-black' : 'bg-gray-600 text-white'">Manter</button>
+                                        <button @click="setAutoLootSetting(key, 'sell')" class="flex-1 font-pixel text-xs py-1 px-2 rounded-md" :class="gameState.autoLootSettings[key] === 'sell' ? 'bg-yellow-500 text-black' : 'bg-gray-600 text-white'">Vender</button>
+                                        <button @click="setAutoLootSetting(key, 'dismantle')" class="flex-1 font-pixel text-xs py-1 px-2 rounded-md" :class="gameState.autoLootSettings[key] === 'dismantle' ? 'bg-red-600 text-white' : 'bg-gray-600 text-white'">Desmontar</button>
                                     </div>
-                                    <button @click="dismantleItem(item.type, item.uniqueId)" class="w-full sm:w-auto mt-2 sm:mt-0 font-pixel text-xs py-2 px-3 rounded-md bg-red-600 text-white hover:bg-red-500 transition">Desmontar (+{{ getDismantleValue(item.rarity) }})</button>
                                 </div>
                             </div>
+                            <button @click="processAutoLoot" class="w-full font-pixel text-sm py-3 px-4 rounded-md bg-green-700 text-white hover:bg-green-600 transition">Executar Gerenciamento</button>
                         </div>
                     </div>
                     <!-- Scripts -->
@@ -608,7 +610,7 @@
 
                 // --- GAME STATE (Reactive) ---
                 const defaultGameState = () => ({
-                    version: 9,
+                    version: 10, // Versão atualizada para incluir novas configurações
                     level: 1, rep: 0, repToNextLevel: 100, creds: 0, skillPoints: 0, prestigePoints: 0,
                     traceLevel: 0,
                     lastSaveTimestamp: dayjs().valueOf(),
@@ -636,6 +638,12 @@
                     comboBonusActive: false,
                     comboBonusRoundsLeft: 0,
                     maxComboCount: 0,
+                    autoLootSettings: { // Nova configuração
+                        comum: 'keep',
+                        incomum: 'keep',
+                        raro: 'keep',
+                        lendario: 'keep'
+                    },
                 });
                 const gameState = reactive(defaultGameState());
 
@@ -912,18 +920,6 @@
                     { id: 'craft_raro', name: 'Hardware Raro Aleatório', rarity: 'raro', cost: { components: 250, creds: 50000 } },
                     { id: 'craft_lendario', name: 'Hardware Lendário Aleatório', rarity: 'lendario', cost: { components: 1000, creds: 250000 } }
                 ]);
-
-                const dismantleList = computed(() => {
-                    const list = [];
-                    for (const type in gameState.inventory) {
-                        gameState.inventory[type].forEach(item => {
-                            if (item.uniqueId !== gameState.equipment[type]) {
-                                list.push({ ...item, type });
-                            }
-                        });
-                    }
-                    return list;
-                });
 
                 // --- METHODS ---
                 const toggleMenu = () => isMenuOpen.value = !isMenuOpen.value;
@@ -1227,31 +1223,6 @@
                     showFloatingText(`+${formatNumber(sellPrice)} Creds`, 'var(--gold-color)', position, 'fa-coins');
                 };
 
-                const sellAllUnequipped = (type) => {
-                    const itemsToSell = gameState.inventory[type].filter(item => item.uniqueId !== gameState.equipment[type]);
-                    if (itemsToSell.length === 0) {
-                        showToast("Nenhum item para vender!", "fa-info-circle", "#f0a04a");
-                        return;
-                    }
-
-                    let totalSellPrice = 0;
-                    itemsToSell.forEach(item => {
-                        const baseItem = hardwareData[type].find(b => b.id === item.baseId);
-                        const rarityInfo = rarities[item.rarity];
-                        if (baseItem && rarityInfo) {
-                            const baseValue = baseItem.bonus.value * 5;
-                            totalSellPrice += Math.floor(baseValue * rarityInfo.multiplier * 0.25);
-                        }
-                    });
-
-                    addCreds(totalSellPrice);
-                    gameState.inventory[type] = gameState.inventory[type].filter(item => item.uniqueId === gameState.equipment[type]);
-
-                    const rect = actionPanelRef.value.getBoundingClientRect();
-                    const position = { x: rect.width / 2, y: rect.height / 2 + 60 };
-                    showFloatingText(`+${formatNumber(totalSellPrice)} Creds`, 'var(--gold-color)', position, 'fa-coins');
-                };
-
                 const setSort = (type, sortBy) => {
                     inventorySort[type] = sortBy;
                 };
@@ -1443,7 +1414,7 @@
                     setTimeout(() => { toast.show = false; }, 3000);
                 };
 
-                const SAVE_KEY = 'cyberpunkNetrunnerSave_v9';
+                const SAVE_KEY = 'cyberpunkNetrunnerSave_v10';
                 const saveGame = (manual = false) => {
                     gameState.lastSaveTimestamp = dayjs().valueOf();
                     localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
@@ -1456,7 +1427,7 @@
                         try {
                             const loadedState = JSON.parse(savedData);
                             
-                            if (!loadedState.version || loadedState.version < 9) {
+                            if (!loadedState.version || loadedState.version < 10) {
                                 console.warn("Save file from an older version detected. Resetting for compatibility.");
                                 resetGame();
                                 return;
@@ -1572,28 +1543,54 @@
                     }
                 };
 
-                const dismantleItem = (type, uniqueId) => {
-                    const itemIndex = gameState.inventory[type].findIndex(i => i.uniqueId === uniqueId);
-                    if (itemIndex === -1 || gameState.equipment[type] === uniqueId) return;
-
-                    const item = gameState.inventory[type][itemIndex];
-                    const value = getDismantleValue(item.rarity);
-                    gameState.components += value;
-                    gameState.inventory[type].splice(itemIndex, 1);
+                const setAutoLootSetting = (rarity, action) => {
+                    gameState.autoLootSettings[rarity] = action;
                 };
 
-                const dismantleAllCommons = () => {
+                const processAutoLoot = () => {
+                    let credsGained = 0;
                     let componentsGained = 0;
+                    let itemsProcessed = 0;
+
                     for (const type in gameState.inventory) {
-                        const commons = gameState.inventory[type].filter(item => item.rarity === 'comum' && item.uniqueId !== gameState.equipment[type]);
-                        componentsGained += commons.length * getDismantleValue('comum');
-                        gameState.inventory[type] = gameState.inventory[type].filter(item => item.rarity !== 'comum' || item.uniqueId === gameState.equipment[type]);
+                        const itemsToKeep = [];
+                        for (const item of gameState.inventory[type]) {
+                            // Sempre manter itens equipados
+                            if (item.uniqueId === gameState.equipment[type]) {
+                                itemsToKeep.push(item);
+                                continue;
+                            }
+
+                            const action = gameState.autoLootSettings[item.rarity];
+                            if (action === 'sell') {
+                                const baseItem = hardwareData[type].find(b => b.id === item.baseId);
+                                const rarityInfo = rarities[item.rarity];
+                                if (baseItem && rarityInfo) {
+                                    const baseValue = baseItem.bonus.value * 5;
+                                    credsGained += Math.floor(baseValue * rarityInfo.multiplier * 0.25);
+                                    itemsProcessed++;
+                                } else {
+                                    itemsToKeep.push(item); // Manter se não encontrar dados do item
+                                }
+                            } else if (action === 'dismantle') {
+                                componentsGained += getDismantleValue(item.rarity);
+                                itemsProcessed++;
+                            } else { // 'keep'
+                                itemsToKeep.push(item);
+                            }
+                        }
+                        gameState.inventory[type] = itemsToKeep;
                     }
-                    if (componentsGained > 0) {
+
+                    if (itemsProcessed > 0) {
+                        gameState.creds += credsGained;
                         gameState.components += componentsGained;
-                        showToast(`+${componentsGained} Componentes`, 'fa-gear', 'var(--highlight-color)');
+                        let message = "Gerenciamento concluído!";
+                        if (credsGained > 0) message += ` +${formatNumber(credsGained)} Creds`;
+                        if (componentsGained > 0) message += ` +${formatNumber(componentsGained)} Componentes`;
+                        showToast(message, 'fa-cogs', 'var(--skill-color)');
                     } else {
-                        showToast("Nenhum item comum para desmontar.", "fa-info-circle", "#f0a04a");
+                        showToast("Nenhum item para gerenciar.", "fa-info-circle", "#f0a04a");
                     }
                 };
 
@@ -1666,17 +1663,17 @@
                     totalInventorySlots, currentInventorySize,
                     prestigeUpgradeDetails,
                     craftingRecipes,
-                    dismantleList,
                     // Methods
                     formatNumber, getItem, getAgentCost, getTrainCost, getAttributePurchaseAmount,
-                    manualClick, equipItem, sellItem, sellAllUnequipped, setSort,
+                    manualClick, equipItem, sellItem, setSort,
                     buyAgent, trainAttribute, setPurchaseAmount, buySkill, activateSkill, upgradeActiveSkill, buyPrestigeUpgrade,
                     saveGame, resetGame, prestigeReset, selectSystem,
                     askForConfirmation, handleConfirm, cancelConfirm,
                     toggleMenu, openView, closeView, upgradeHackSpeed, upgradeCritChance, upgradeCritMultiplier, upgradeComboDuration,
                     upgradeInventorySlots,
                     getAchievementProgress,
-                    craftItem, canCraft, dismantleItem, getDismantleValue, dismantleAllCommons,
+                    craftItem, canCraft, getDismantleValue,
+                    setAutoLootSetting, processAutoLoot,
                     PRESTIGE_LEVEL_REQ,
                     systemData,
                     rarities
