@@ -594,9 +594,20 @@
                 ];
 
                 const eventData = [
-                    { id: 'evt1', name: 'Surto de Dados', description: 'Ganhos de REP +50%!', icon: 'fa-brain', duration: 90, effect: { stat: 'repMultiplier', value: 0.5 } },
-                    { id: 'evt2', name: 'Mercado em Alta', description: 'Ganhos de Creds +50%!', icon: 'fa-chart-line', duration: 90, effect: { stat: 'credsMultiplier', value: 0.5 } },
-                    { id: 'evt3', name: 'Adrenalina Digital', description: 'Velocidade de Invasão +25%!', icon: 'fa-bolt', duration: 90, effect: { stat: 'hackSpeed', value: 0.25 } }
+                    { id: 'evt1', name: 'Surto de Dados', description: 'Ganhos de REP +50%!', icon: 'fa-brain', duration: 90, effects: [{ stat: 'repMultiplier', value: 0.5 }] },
+                    { id: 'evt2', name: 'Mercado em Alta', description: 'Ganhos de Creds +50%!', icon: 'fa-chart-line', duration: 90, effects: [{ stat: 'credsMultiplier', value: 0.5 }] },
+                    { id: 'evt3', name: 'Adrenalina Digital', description: 'Velocidade de Invasão +25%!', icon: 'fa-bolt', duration: 90, effects: [{ stat: 'hackSpeed', value: 0.25 }] },
+                    { id: 'evt4', name: 'Vulnerabilidade Exposta', description: 'Chance de Loot +20%!', icon: 'fa-shield-slash', duration: 60, effects: [{ stat: 'lootChanceBonus', value: 0.20 }] },
+                    { id: 'evt5', name: 'Manutenção da Rede', description: 'Velocidade de Invasão -50%!', icon: 'fa-screwdriver-wrench', duration: 120, effects: [{ stat: 'hackSpeed', value: -0.5 }] },
+                    { id: 'evt6', name: 'Caça a Recompensa', description: 'Ganhos de REP +100%!', icon: 'fa-crosshairs', duration: 90, effects: [{ stat: 'repMultiplier', value: 1.0 }] },
+                    { id: 'evt7', name: 'Mercado Negro Ativo', description: 'Ganhos de Componentes +100%!', icon: 'fa-box-archive', duration: 180, effects: [{ stat: 'componentMultiplier', value: 1.0 }] },
+                    { id: 'evt8', name: 'Rastreamento Aprimorado', description: 'Rastreamento aumenta 2x mais rápido!', icon: 'fa-user-magnifying-glass', duration: 120, effects: [{ stat: 'traceGainMultiplier', value: 1.0 }] },
+                    { id: 'evt9', name: 'Falha na Criptografia', description: 'Chance de Crítico +10%!', icon: 'fa-bug', duration: 90, effects: [{ stat: 'critChance', value: 0.10 }] },
+                    { id: 'evt10', name: 'Dados Corrompidos', description: 'Ganhos de Creds -50%!', icon: 'fa-file-circle-xmark', duration: 120, effects: [{ stat: 'credsMultiplier', value: -0.5 }] },
+                    { id: 'evt11', name: 'Frenesi de Invasão', description: 'Cliques manuais 2x mais eficazes!', icon: 'fa-computer-mouse', duration: 60, effects: [{ stat: 'manualClickPower', value: 1.0 }] },
+                    { id: 'evt12', name: 'Conexão Fantasma', description: 'Ganhos de Scripts +50%!', icon: 'fa-ghost', duration: 180, effects: [{ stat: 'cpsMultiplier', value: 0.5 }] },
+                    { id: 'evt13', name: 'Sobrecarga de Processamento', description: 'Poder de Invasão +25%!', icon: 'fa-brain-circuit', duration: 90, effects: [{ stat: 'invasionPowerMultiplier', value: 0.25 }] },
+                    { id: 'evt14', name: 'Sorte de Novato', description: 'Loot (+10%) e Crítico (+5%) aumentados!', icon: 'fa-dice', duration: 120, effects: [{ stat: 'lootChanceBonus', value: 0.10 }, { stat: 'critChance', value: 0.05 }] },
                 ];
 
                 // --- GAME STATE (Reactive) ---
@@ -722,7 +733,34 @@
                 });
                 const currentInventorySize = computed(() => Object.values(gameState.inventory).flat().length);
 
+                const getActiveEventBonuses = () => {
+                    const bonuses = {
+                        repMultiplier: 1,
+                        credsMultiplier: 1,
+                        hackSpeed: 1,
+                        lootChanceBonus: 0,
+                        componentMultiplier: 1,
+                        traceGainMultiplier: 1,
+                        critChance: 0,
+                        manualClickPower: 1,
+                        invasionPowerMultiplier: 1,
+                        cpsMultiplier: 1,
+                    };
+
+                    if (activeEvent.value && activeEvent.value.effects) {
+                        activeEvent.value.effects.forEach(effect => {
+                            if (['lootChanceBonus', 'critChance'].includes(effect.stat)) {
+                                bonuses[effect.stat] += effect.value;
+                            } else {
+                                bonuses[effect.stat] *= (1 + effect.value);
+                            }
+                        });
+                    }
+                    return bonuses;
+                };
+
                 const computedStats = computed(() => {
+                    const eventBonus = getActiveEventBonuses();
                     const base = gameState.attributes;
                     const eqIds = gameState.equipment;
                     const achBonus = achievementBonus.value;
@@ -750,7 +788,7 @@
                     let currentProcessamento = base.processamento + (equippedImplante?.bonus.stat === 'processamento' ? equippedImplante.bonus.value : 0);
                     let currentAgilidade = base.agilidade + (equippedImplante?.bonus.stat === 'agilidade' ? equippedImplante.bonus.value : 0);
                     
-                    let totalInvasionPower = ((currentProcessamento * 5) + (currentAgilidade * 2)) * achBonus.invasionPowerMultiplier;
+                    let totalInvasionPower = ((currentProcessamento * 5) + (currentAgilidade * 2)) * achBonus.invasionPowerMultiplier * eventBonus.invasionPowerMultiplier;
                     let totalSecurity = base.ofuscacao * 3;
 
                     const equippedDeck = getItem('deck', eqIds.deck);
@@ -770,11 +808,6 @@
                         if (agentInfo) totalCps += gameState.agents[agentId] * agentInfo.cps;
                     }
 
-                    let eventBonus = { repMultiplier: 1, credsMultiplier: 1, hackSpeed: 1 };
-                    if (activeEvent.value) {
-                        eventBonus[activeEvent.value.effect.stat] = 1 + activeEvent.value.effect.value;
-                    }
-
                     const prestigeRepBonus = 1 + ((gameState.prestigeUpgrades.prestige_rep || 0) * 0.1);
                     const prestigeCredsBonus = 1 + ((gameState.prestigeUpgrades.prestige_creds || 0) * 0.1);
 
@@ -782,16 +815,16 @@
                         invasionPower: totalInvasionPower,
                         security: totalSecurity,
                         maxTrace: 100 + (base.ofuscacao - 1) * 20,
-                        credsPerSecond: totalCps * passiveBonuses.cpsMultiplier * specialBonuses.cpsBonus * prestigeCredsBonus * achBonus.globalMultiplier,
-                        repMultiplier: passiveBonuses.repMultiplier * achBonus.repMultiplier * eventBonus.repMultiplier * prestigeRepBonus,
-                        credsMultiplier: achBonus.globalMultiplier * eventBonus.credsMultiplier * prestigeCredsBonus,
-                        critChance: 0.05 + (gameState.critChanceLevel - 1) * 0.005 + specialBonuses.critChanceBonus,
+                        credsPerSecond: totalCps * passiveBonuses.cpsMultiplier * specialBonuses.cpsBonus * prestigeCredsBonus * achBonus.globalMultiplier * eventBonus.cpsMultiplier * eventBonus.credsMultiplier,
+                        repMultiplier: passiveBonuses.repMultiplier * achBonus.repMultiplier * prestigeRepBonus * eventBonus.repMultiplier,
+                        credsMultiplier: achBonus.globalMultiplier * prestigeCredsBonus * eventBonus.credsMultiplier,
+                        critChance: 0.05 + (gameState.critChanceLevel - 1) * 0.005 + specialBonuses.critChanceBonus + eventBonus.critChance,
                         critMultiplier: 1.5 + (gameState.critMultiplierLevel - 1) * 0.1 + specialBonuses.critMultiplierBonus,
                         prestigeBonus,
                         achievementBonus: achBonus.globalMultiplier,
                         hackSpeed: ((1 + (gameState.hackSpeedLevel - 1) * 0.1) * eventBonus.hackSpeed) * hackSpeedMultiplier,
                         comboRounds: 5 + (gameState.comboDurationLevel - 1),
-                        lootChanceBonus: specialBonuses.lootChanceBonus + achBonus.lootChanceBonus,
+                        lootChanceBonus: specialBonuses.lootChanceBonus + achBonus.lootChanceBonus + eventBonus.lootChanceBonus,
                         traceResist: specialBonuses.traceResist
                     };
                 });
@@ -992,6 +1025,8 @@
                 const manualClick = () => {
                     if (isPlayerDisconnected.value) return;
 
+                    const eventBonus = getActiveEventBonuses();
+
                     const targetIcon = actionPanelRef.value.querySelector('.fa-solid');
                     if (targetIcon) {
                         targetIcon.classList.add('target-hit-animation');
@@ -1015,7 +1050,7 @@
                     
                     gameState.stats.totalClicks++;
                     const comboBonus = 1 + (gameState.comboCount * 0.01);
-                    hackProgress.value = Math.min(100, hackProgress.value + (5 * comboBonus));
+                    hackProgress.value = Math.min(100, hackProgress.value + (5 * comboBonus * eventBonus.manualClickPower));
                 };
 
                 const resolveHack = () => {
@@ -1023,6 +1058,7 @@
                     const system = currentTargetSystem.value;
                     const rect = actionPanelRef.value.getBoundingClientRect();
                     const position = { x: rect.width / 2, y: rect.height / 2 };
+                    const eventBonus = getActiveEventBonuses();
 
                     const progressBar = actionPanelRef.value.querySelector('.bg-cyan-400');
                     if (progressBar) {
@@ -1071,7 +1107,7 @@
                         if (Math.random() < playerStats.traceResist) {
                             showFloatingText('Resistido!', 'var(--highlight-color)', position);
                         } else {
-                            const traceIncrease = Math.max(1, system.processingPower - playerStats.security);
+                            const traceIncrease = Math.max(1, system.processingPower - playerStats.security) * eventBonus.traceGainMultiplier;
                             gameState.traceLevel = Math.min(computedStats.value.maxTrace, gameState.traceLevel + traceIncrease);
                             showFloatingText(`+${formatNumber(traceIncrease)} Rastreamento`, 'var(--trace-color)', position);
                         }
@@ -1555,6 +1591,7 @@
                 };
 
                 const processAutoLoot = () => {
+                    const eventBonus = getActiveEventBonuses();
                     let credsGained = 0;
                     let componentsGained = 0;
                     let itemsProcessed = 0;
@@ -1580,7 +1617,7 @@
                                     itemsToKeep.push(item); // Manter se não encontrar dados do item
                                 }
                             } else if (action === 'dismantle') {
-                                componentsGained += getDismantleValue(item.rarity);
+                                componentsGained += getDismantleValue(item.rarity) * eventBonus.componentMultiplier;
                                 itemsProcessed++;
                             } else { // 'keep'
                                 itemsToKeep.push(item);
