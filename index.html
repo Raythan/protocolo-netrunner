@@ -244,81 +244,72 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Hardware -->
-                    <div v-if="activeView === 'hardware'">
-                        <div class="flex border-b border-gray-700 mb-4">
-                            <button @click="hardwareViewTab = 'inventory'" class="font-pixel py-2 px-4 text-sm" :class="hardwareViewTab === 'inventory' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-500'">Inventário</button>
-                            <button @click="hardwareViewTab = 'crafting'" class="font-pixel py-2 px-4 text-sm" :class="hardwareViewTab === 'crafting' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-500'">Oficina</button>
+                    <!-- Inventário -->
+                    <div v-if="activeView === 'inventory'">
+                        <div class="text-center font-pixel text-lg mb-4 p-2 bg-gray-900 rounded-lg">
+                            Slots: <span :class="currentInventorySize >= totalInventorySlots ? 'text-red-500' : 'text-cyan-400'">{{ currentInventorySize }} / {{ totalInventorySlots }}</span>
                         </div>
-
-                        <!-- Aba de Inventário -->
-                        <div v-if="hardwareViewTab === 'inventory'">
-                            <div class="text-center font-pixel text-lg mb-4 p-2 bg-gray-900 rounded-lg">
-                                Slots: <span :class="currentInventorySize >= totalInventorySlots ? 'text-red-500' : 'text-cyan-400'">{{ currentInventorySize }} / {{ totalInventorySlots }}</span>
-                            </div>
-                            <div v-for="(items, type) in sortedInventory" :key="type" class="mb-6">
-                                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 gap-y-2">
-                                    <h3 class="font-pixel text-cyan-400 capitalize">{{ {deck: 'Decks de Invasão', software: 'Softwares', implante: 'Implantes'}[type] || type }}</h3>
-                                    <div class="flex flex-wrap gap-2 items-center">
-                                        <div class="text-xs font-pixel">Ordenar:</div>
-                                        <button @click="setSort(type, 'rarity')" class="font-pixel text-xs py-1 px-2 rounded-md" :class="inventorySort[type] === 'rarity' ? 'bg-cyan-500 text-black' : 'bg-gray-600'">Raridade</button>
-                                        <button @click="setSort(type, 'power')" class="font-pixel text-xs py-1 px-2 rounded-md" :class="inventorySort[type] === 'power' ? 'bg-cyan-500 text-black' : 'bg-gray-600'">Poder</button>
-                                    </div>
+                        <div v-for="(items, type) in sortedInventory" :key="type" class="mb-6">
+                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 gap-y-2">
+                                <h3 class="font-pixel text-cyan-400 capitalize">{{ {deck: 'Decks de Invasão', software: 'Softwares', implante: 'Implantes'}[type] || type }}</h3>
+                                <div class="flex flex-wrap gap-2 items-center">
+                                    <div class="text-xs font-pixel">Ordenar:</div>
+                                    <button @click="setSort(type, 'rarity')" class="font-pixel text-xs py-1 px-2 rounded-md" :class="inventorySort[type] === 'rarity' ? 'bg-cyan-500 text-black' : 'bg-gray-600'">Raridade</button>
+                                    <button @click="setSort(type, 'power')" class="font-pixel text-xs py-1 px-2 rounded-md" :class="inventorySort[type] === 'power' ? 'bg-cyan-500 text-black' : 'bg-gray-600'">Poder</button>
                                 </div>
-                                <div class="space-y-2 mt-2">
-                                    <div v-if="!items.length" class="text-center text-gray-500 p-4 bg-gray-800 rounded-lg">Inventário Vazio</div>
-                                    <div v-for="item in items" :key="item.uniqueId" 
-                                        class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg border-l-4 transition-all" 
-                                        :class="{ 'equipped-highlight': gameState.equipment[type] === item.uniqueId }"
-                                        :style="{borderLeftColor: item.rarityColor}">
-                                        <div class="w-full sm:w-auto text-center sm:text-left">
-                                            <p class="font-bold" :style="{color: item.rarityColor}"><i :class="['fa-solid', item.icon, 'mr-2']"></i>{{ item.name }}</p>
-                                            <p class="text-sm text-gray-400">+{{ formatNumber(item.bonus.value) }} {{ {processamento: 'Processamento', ofuscacao: 'Ofuscação', agilidade: 'Agilidade'}[item.bonus.stat] || item.bonus.stat }}</p>
-                                            <p v-if="item.specialEffect" class="text-xs text-cyan-400 mt-1"><i class="fa-solid fa-star-of-life mr-1"></i>{{ item.specialEffect.description }}</p>
-                                        </div>
-                                        <div class="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                                            <button @click="sellItem(type, item.uniqueId)" :disabled="gameState.equipment[type] === item.uniqueId" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-red-600 text-white hover:bg-red-500 transition disabled:bg-gray-700 disabled:cursor-not-allowed">Vender</button>
-                                            <button v-if="gameState.equipment[type] === item.uniqueId" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-gray-600" disabled>Instalado</button>
-                                            <button v-else @click="equipItem(type, item.uniqueId)" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-yellow-500 text-black hover:bg-yellow-400 transition">Instalar</button>
-                                        </div>
+                            </div>
+                            <div class="space-y-2 mt-2">
+                                <div v-if="!items.length" class="text-center text-gray-500 p-4 bg-gray-800 rounded-lg">Inventário Vazio</div>
+                                <div v-for="item in items" :key="item.uniqueId" 
+                                    class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg border-l-4 transition-all" 
+                                    :class="{ 'equipped-highlight': gameState.equipment[type] === item.uniqueId }"
+                                    :style="{borderLeftColor: item.rarityColor}">
+                                    <div class="w-full sm:w-auto text-center sm:text-left">
+                                        <p class="font-bold" :style="{color: item.rarityColor}"><i :class="['fa-solid', item.icon, 'mr-2']"></i>{{ item.name }}</p>
+                                        <p class="text-sm text-gray-400">+{{ formatNumber(item.bonus.value) }} {{ {processamento: 'Processamento', ofuscacao: 'Ofuscação', agilidade: 'Agilidade'}[item.bonus.stat] || item.bonus.stat }}</p>
+                                        <p v-if="item.specialEffect" class="text-xs text-cyan-400 mt-1"><i class="fa-solid fa-star-of-life mr-1"></i>{{ item.specialEffect.description }}</p>
+                                    </div>
+                                    <div class="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                                        <button @click="sellItem(type, item.uniqueId)" :disabled="gameState.equipment[type] === item.uniqueId" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-red-600 text-white hover:bg-red-500 transition disabled:bg-gray-700 disabled:cursor-not-allowed">Vender</button>
+                                        <button v-if="gameState.equipment[type] === item.uniqueId" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-gray-600" disabled>Instalado</button>
+                                        <button v-else @click="equipItem(type, item.uniqueId)" class="w-full sm:w-auto font-pixel text-xs py-2 px-3 rounded-md bg-yellow-500 text-black hover:bg-yellow-400 transition">Instalar</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Aba de Oficina (Crafting) -->
-                        <div v-if="hardwareViewTab === 'crafting'">
-                            <div class="text-center font-pixel text-lg mb-4 p-2 bg-gray-900 rounded-lg">
-                                Componentes: <span class="text-cyan-400">{{ formatNumber(gameState.components) }}</span>
-                            </div>
-                            
-                            <h3 class="font-pixel text-cyan-400 mb-3">Fabricar Hardware</h3>
-                            <div class="space-y-2 mb-6">
-                                <div v-for="recipe in craftingRecipes" :key="recipe.id" class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg">
-                                    <div class="text-center sm:text-left">
-                                        <p class="font-bold text-sm" :style="{color: rarities[recipe.rarity].color}">{{ recipe.name }}</p>
-                                        <p class="text-xs text-gray-400">Custo: {{ formatNumber(recipe.cost.components) }} <i class="fas fa-gear"></i>, {{ formatNumber(recipe.cost.creds) }} <i class="fas fa-coins"></i></p>
-                                    </div>
-                                    <button @click="craftItem(recipe.id)" :disabled="!canCraft(recipe.id)" class="w-full sm:w-auto mt-2 sm:mt-0 font-pixel text-sm py-2 px-4 rounded-md bg-green-500 text-black hover:bg-green-400 transition disabled:bg-gray-700 disabled:cursor-not-allowed">Fabricar</button>
-                                </div>
-                            </div>
-
-                            <hr class="border-gray-700 my-6">
-
-                            <!-- Gerenciamento Automático de Loot -->
-                            <h3 class="font-pixel text-cyan-400 mb-3">Gerenciamento Automático de Loot</h3>
-                            <div class="space-y-3 mb-4 bg-gray-800 p-4 rounded-lg">
-                                <div v-for="(rarity, key) in rarities" :key="key" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                    <p class="font-bold text-sm text-center sm:text-left w-full sm:w-1/4" :style="{color: rarity.color}">{{ rarity.name }}</p>
-                                    <div class="w-full sm:w-3/4 flex gap-2">
-                                        <button @click="setAutoLootSetting(key, 'keep')" class="flex-1 font-pixel text-xs py-2 px-1 rounded-md" :class="gameState.autoLootSettings[key] === 'keep' ? 'bg-cyan-500 text-black' : 'bg-gray-600 text-white'">Manter</button>
-                                        <button @click="setAutoLootSetting(key, 'sell')" class="flex-1 font-pixel text-xs py-2 px-1 rounded-md" :class="gameState.autoLootSettings[key] === 'sell' ? 'bg-yellow-500 text-black' : 'bg-gray-600 text-white'">Vender</button>
-                                        <button @click="setAutoLootSetting(key, 'dismantle')" class="flex-1 font-pixel text-xs py-2 px-1 rounded-md" :class="gameState.autoLootSettings[key] === 'dismantle' ? 'bg-red-600 text-white' : 'bg-gray-600 text-white'">Desmontar</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <button @click="processAutoLoot" class="w-full font-pixel text-sm py-3 px-4 rounded-md bg-green-700 text-white hover:bg-green-600 transition">Executar Gerenciamento</button>
+                    </div>
+                    <!-- Oficina -->
+                    <div v-if="activeView === 'crafting'">
+                        <div class="text-center font-pixel text-lg mb-4 p-2 bg-gray-900 rounded-lg">
+                            Componentes: <span class="text-cyan-400">{{ formatNumber(gameState.components) }}</span>
                         </div>
+                        
+                        <h3 class="font-pixel text-cyan-400 mb-3">Fabricar Hardware</h3>
+                        <div class="space-y-2 mb-6">
+                            <div v-for="recipe in craftingRecipes" :key="recipe.id" class="flex flex-col sm:flex-row items-center justify-between bg-gray-800 p-3 rounded-lg">
+                                <div class="text-center sm:text-left">
+                                    <p class="font-bold text-sm" :style="{color: rarities[recipe.rarity].color}">{{ recipe.name }}</p>
+                                    <p class="text-xs text-gray-400">Custo: {{ formatNumber(recipe.cost.components) }} <i class="fas fa-gear"></i>, {{ formatNumber(recipe.cost.creds) }} <i class="fas fa-coins"></i></p>
+                                </div>
+                                <button @click="craftItem(recipe.id)" :disabled="!canCraft(recipe.id)" class="w-full sm:w-auto mt-2 sm:mt-0 font-pixel text-sm py-2 px-4 rounded-md bg-green-500 text-black hover:bg-green-400 transition disabled:bg-gray-700 disabled:cursor-not-allowed">Fabricar</button>
+                            </div>
+                        </div>
+
+                        <hr class="border-gray-700 my-6">
+
+                        <!-- Gerenciamento Automático de Loot -->
+                        <h3 class="font-pixel text-cyan-400 mb-3">Gerenciamento Automático de Loot</h3>
+                        <div class="space-y-3 mb-4 bg-gray-800 p-4 rounded-lg">
+                            <div v-for="(rarity, key) in rarities" :key="key" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <p class="font-bold text-sm text-center sm:text-left w-full sm:w-1/4" :style="{color: rarity.color}">{{ rarity.name }}</p>
+                                <div class="w-full sm:w-3/4 flex gap-2">
+                                    <button @click="setAutoLootSetting(key, 'keep')" class="flex-1 font-pixel text-xs py-2 px-1 rounded-md" :class="gameState.autoLootSettings[key] === 'keep' ? 'bg-cyan-500 text-black' : 'bg-gray-600 text-white'">Manter</button>
+                                    <button @click="setAutoLootSetting(key, 'sell')" class="flex-1 font-pixel text-xs py-2 px-1 rounded-md" :class="gameState.autoLootSettings[key] === 'sell' ? 'bg-yellow-500 text-black' : 'bg-gray-600 text-white'">Vender</button>
+                                    <button @click="setAutoLootSetting(key, 'dismantle')" class="flex-1 font-pixel text-xs py-2 px-1 rounded-md" :class="gameState.autoLootSettings[key] === 'dismantle' ? 'bg-red-600 text-white' : 'bg-gray-600 text-white'">Desmontar</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button @click="processAutoLoot" class="w-full font-pixel text-sm py-3 px-4 rounded-md bg-green-700 text-white hover:bg-green-600 transition">Executar Gerenciamento</button>
                     </div>
                     <!-- Scripts -->
                     <div v-if="activeView === 'scripts'" class="space-y-2">
@@ -665,12 +656,12 @@
                 const playerDisconnectedTimer = ref(0);
                 const inventorySort = reactive({ deck: 'rarity', software: 'rarity', implante: 'rarity' });
                 const purchaseAmount = ref(1);
-                const hardwareViewTab = ref('inventory');
                 
                 // --- COMPUTED PROPERTIES ---
                 const viewData = {
                     netrunner: { name: 'Netrunner', icon: 'fa-user' },
-                    hardware: { name: 'Hardware', icon: 'fa-boxes-stacked' },
+                    inventory: { name: 'Inventário', icon: 'fa-box' },
+                    crafting: { name: 'Oficina', icon: 'fa-hammer' },
                     scripts: { name: 'Scripts', icon: 'fa-scroll' },
                     training: { name: 'Treinamento', icon: 'fa-dumbbell' },
                     skills: { name: 'Habilidades', icon: 'fa-brain' },
@@ -1648,7 +1639,6 @@
                     hackProgress, isPlayerDisconnected, playerDisconnectedTimer,
                     activeEvent, activeEventTimer,
                     inventorySort, purchaseAmount,
-                    hardwareViewTab,
                     // Computed
                     computedStats, currentTargetSystem, prestigePointsToGain, activeSkills,
                     skillTree,
