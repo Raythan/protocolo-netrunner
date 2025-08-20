@@ -433,6 +433,15 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Estatísticas -->
+                    <div v-if="activeView === 'statistics'">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div v-for="stat in playerStats" :key="stat.label" class="bg-gray-800 p-4 rounded-lg text-center">
+                                <p class="text-sm text-cyan-400 font-pixel">{{ stat.label }}</p>
+                                <p class="text-2xl font-bold mt-2">{{ stat.value }}</p>
+                            </div>
+                        </div>
+                    </div>
                     <!-- Sistema -->
                     <div v-if="activeView === 'system'">
                         <div class="flex flex-col gap-4 mt-4">
@@ -612,7 +621,7 @@
 
                 // --- GAME STATE (Reactive) ---
                 const defaultGameState = () => ({
-                    version: 10, // Versão atualizada para incluir novas configurações
+                    version: 11,
                     level: 1, rep: 0, repToNextLevel: 100, creds: 0, skillPoints: 0, prestigePoints: 0,
                     traceLevel: 0,
                     lastSaveTimestamp: dayjs().valueOf(),
@@ -626,7 +635,17 @@
                     prestigeUpgrades: {},
                     activeEffects: {},
                     skillCooldowns: {},
-                    stats: { totalClicks: 0, totalCreds: 0, systemsHacked: {}, prestigeCount: 0 },
+                    stats: { 
+                        totalClicks: 0, 
+                        totalCreds: 0, 
+                        systemsHacked: {}, 
+                        prestigeCount: 0,
+                        totalHacks: 0,
+                        totalLootDropped: 0,
+                        credsFromSelling: 0,
+                        componentsFromDismantling: 0,
+                        highestComboEver: 0,
+                    },
                     completedAchievementIds: [],
                     hackSpeedLevel: 1,
                     critChanceLevel: 1,
@@ -640,7 +659,7 @@
                     comboBonusActive: false,
                     comboBonusRoundsLeft: 0,
                     maxComboCount: 0,
-                    autoLootSettings: { // Nova configuração
+                    autoLootSettings: {
                         comum: 'keep',
                         incomum: 'keep',
                         raro: 'keep',
@@ -678,6 +697,7 @@
                     skills: { name: 'Habilidades', icon: 'fa-brain' },
                     prestige: { name: 'Prestígio', icon: 'fa-atom' },
                     achievements: { name: 'Conquistas', icon: 'fa-trophy' },
+                    statistics: { name: 'Estatísticas', icon: 'fa-chart-pie' },
                     system: { name: 'Sistema', icon: 'fa-cogs' },
                     systemSelection: { name: 'Seleção de Alvo', icon: 'fa-crosshairs' }
                 };
@@ -827,6 +847,24 @@
                         lootChanceBonus: specialBonuses.lootChanceBonus + achBonus.lootChanceBonus + eventBonus.lootChanceBonus,
                         traceResist: specialBonuses.traceResist
                     };
+                });
+
+                const playerStats = computed(() => {
+                    const stats = gameState.stats;
+                    const mostHackedSystemId = Object.keys(stats.systemsHacked).reduce((a, b) => stats.systemsHacked[a] > stats.systemsHacked[b] ? a : b, null);
+                    const mostHackedSystem = mostHackedSystemId ? systemData.find(s => s.id === mostHackedSystemId) : null;
+
+                    return [
+                        { label: 'Total de Invasões', value: formatNumber(stats.totalHacks || 0) },
+                        { label: 'Sistema Mais Invadido', value: mostHackedSystem ? mostHackedSystem.name : 'Nenhum' },
+                        { label: 'Total de Creds Coletados', value: formatNumber(stats.totalCreds || 0) },
+                        { label: 'Maior Combo Alcançado', value: `x${formatNumber(stats.highestComboEver || 0)}` },
+                        { label: 'Total de Loots Obtidos', value: formatNumber(stats.totalLootDropped || 0) },
+                        { label: 'Creds Ganhos com Vendas', value: formatNumber(stats.credsFromSelling || 0) },
+                        { label: 'Componentes da Desmontagem', value: formatNumber(stats.componentsFromDismantling || 0) },
+                        { label: 'Número de Prestígios', value: formatNumber(stats.prestigeCount || 0) },
+                        { label: 'Cliques Manuais', value: formatNumber(stats.totalClicks || 0) },
+                    ];
                 });
 
                 const currentTargetSystem = computed(() => systemData.find(e => e.id === gameState.currentTargetSystemId) || systemData[0]);
@@ -1039,6 +1077,10 @@
                     } else {
                         gameState.comboCount = 1;
                     }
+
+                    if (gameState.comboCount > gameState.stats.highestComboEver) {
+                        gameState.stats.highestComboEver = gameState.comboCount;
+                    }
                     
                     if(gameState.comboCount >= 10 && !gameState.comboBonusActive) {
                         gameState.comboBonusActive = true;
@@ -1077,6 +1119,7 @@
                     }
 
                     if (playerStats.invasionPower > system.encryption) {
+                        gameState.stats.totalHacks++;
                         const isCritical = Math.random() < playerStats.critChance;
                         const critMultiplier = isCritical ? playerStats.critMultiplier : 1;
                         
@@ -1195,6 +1238,7 @@
 
                     if (!gameState.inventory[itemType]) gameState.inventory[itemType] = [];
                     gameState.inventory[itemType].push(newItem);
+                    gameState.stats.totalLootDropped++;
 
                     if (!fixedRarity) {
                        const rect = actionPanelRef.value.getBoundingClientRect();
@@ -1243,6 +1287,7 @@
                     const sellPrice = Math.floor(baseValue * rarityInfo.multiplier * 0.25);
 
                     addCreds(sellPrice);
+                    gameState.stats.credsFromSelling += sellPrice;
                     gameState.inventory[type].splice(itemIndex, 1);
 
                     const rect = actionPanelRef.value.getBoundingClientRect();
@@ -1457,7 +1502,7 @@
                     }, 50);
                 };
 
-                const SAVE_KEY = 'cyberpunkNetrunnerSave_v10';
+                const SAVE_KEY = 'cyberpunkNetrunnerSave_v11';
                 const saveGame = (manual = false) => {
                     gameState.lastSaveTimestamp = dayjs().valueOf();
                     localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
@@ -1470,7 +1515,7 @@
                         try {
                             const loadedState = JSON.parse(savedData);
                             
-                            if (!loadedState.version || loadedState.version < 10) {
+                            if (!loadedState.version || loadedState.version < 11) {
                                 console.warn("Save file from an older version detected. Resetting for compatibility.");
                                 resetGame();
                                 return;
@@ -1611,13 +1656,17 @@
                                 const rarityInfo = rarities[item.rarity];
                                 if (baseItem && rarityInfo) {
                                     const baseValue = baseItem.bonus.value * 5;
-                                    credsGained += Math.floor(baseValue * rarityInfo.multiplier * 0.25);
+                                    const sellPrice = Math.floor(baseValue * rarityInfo.multiplier * 0.25);
+                                    credsGained += sellPrice;
+                                    gameState.stats.credsFromSelling += sellPrice;
                                     itemsProcessed++;
                                 } else {
                                     itemsToKeep.push(item); // Manter se não encontrar dados do item
                                 }
                             } else if (action === 'dismantle') {
-                                componentsGained += getDismantleValue(item.rarity) * eventBonus.componentMultiplier;
+                                const dismantledValue = getDismantleValue(item.rarity) * eventBonus.componentMultiplier;
+                                componentsGained += dismantledValue;
+                                gameState.stats.componentsFromDismantling += dismantledValue;
                                 itemsProcessed++;
                             } else { // 'keep'
                                 itemsToKeep.push(item);
@@ -1706,6 +1755,7 @@
                     totalInventorySlots, currentInventorySize,
                     prestigeUpgradeDetails,
                     craftingRecipes,
+                    playerStats,
                     // Methods
                     formatNumber, getItem, getAgentCost, getTrainCost, getAttributePurchaseAmount,
                     manualClick, equipItem, sellItem, setSort,
