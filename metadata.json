@@ -1,0 +1,5 @@
+{
+  "name": "WhatsApp Message Scheduler",
+  "description": "An application to schedule and manage one-time or recurring WhatsApp messages. It allows users to write messages, set a future date and time for sending, and uses AI to help craft message content. Messages can be sent by clicking a button that opens the WhatsApp web or mobile interface.",
+  "requestFramePermissions": []
+}
